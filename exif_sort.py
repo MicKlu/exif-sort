@@ -1,6 +1,11 @@
+#!/usr/bin/python3
+
 import os
-import sys
+from pathlib import Path
 from PIL import Image
+import sys
+
+__version__ = "0.1.0"
 
 class ImageOpenError(Exception):
     def __init__(self, path):
@@ -18,23 +23,23 @@ class ImageFile:
         except:
             raise ImageOpenError(self.__path)
 
-    def get_date_time(self):
-        date_time_str = self.__exif.get(306)
+    def get_date_time(self) -> list:
+        date_time_str: str = self.__exif.get(306)
 
         if len(date_time_str) == 0:
             return None
 
-        return date_time_str
+        [date, time] = date_time_str.split(" ")
 
-files = os.listdir(sys.argv[1])
-for file in files:
-    path = f"{sys.argv[1]}/{file}"
+        return date.split(":") + time.split(":")
 
-    if os.path.isdir(path):
+images_dir = Path(sys.argv[1])
+for file in images_dir.iterdir():
+    if file.is_dir():
         continue
 
     try:
-        img = ImageFile(path)
-        print(f"{path}: {img.get_date_time()}")
+        img = ImageFile(file)
+        print(f"{file}: {img.get_date_time()}")
     except:
         pass
