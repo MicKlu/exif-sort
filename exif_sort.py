@@ -43,20 +43,31 @@ class ImageFile:
     def move(self, output_path: Path):
         """Moves file to new location"""
 
-        print(f"{self.__path} -> {output_path}")
+        new_path = output_path
+
+        i = 1
+        while new_path.exists():
+            filename = output_path.stem
+            extention = output_path.suffix
+            new_path = output_path.parent.joinpath(f"{filename}-{i}{extention}")
+            i += 1
+
+        print(f"{self.__path} -> {new_path}")
+
         # output_path.parent.mkdir(parents=True, exist_ok=True)
-        # shutil.copy(self.__path, output_path)
-        # shutil.move(self.__path, output_path)
+        # shutil.copy(self.__path, new_path)
+        # shutil.move(self.__path, new_path)
 
 class ImageSorter:
     """Performs images sorting operation"""
 
     def __init__(self, input_dir: Path):
-        self.input_dir = input_dir
-        self.output_dir = input_dir.joinpath("sort_output")
-        self.recursive = False
-        self.group_format = "%Y/%B/%d"
-        self.sort_unknown = False
+        self.input_dir: Path = input_dir
+        self.output_dir: Path = input_dir.joinpath("sort_output")
+        self.recursive: bool = False
+        self.group_format: str = "%Y/%B/%d"
+        self.sort_unknown: bool = False
+        self.rename_format: str = None
 
     def sort(self):
         """Starts sorting loop"""
@@ -83,13 +94,17 @@ class ImageSorter:
         except:
             date_time = None
 
+        filename = path.name
+
+        output_path = self.output_dir
         if date_time is not None:
-            output_path = self.output_dir.joinpath(date_time.strftime(self.group_format))
-            output_path = output_path.joinpath(path.name)
-        elif date_time is None and self.sort_unknown:
-            output_path = self.output_dir.joinpath(path.name)
-        else:
+            output_path = output_path.joinpath(date_time.strftime(self.group_format))
+            if self.rename_format is not None:
+                filename = date_time.strftime(self.rename_format) + path.suffix
+        elif date_time is None and not self.sort_unknown:
             return
+
+        output_path = output_path.joinpath(filename)
 
         img.move(output_path)
 
@@ -102,5 +117,6 @@ if __name__ == "__main__":
     # img_sorter.recursive = True
     # img_sorter.group_format = group_format
     # img_sorter.sort_unknown = True
+    # img_sorter.rename_format = "%Y-%m-%d %H-%M-%S"
 
     img_sorter.sort()
