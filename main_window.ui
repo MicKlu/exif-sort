@@ -1,0 +1,481 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>800</width>
+    <height>0</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string notr="true">EXIF Image Sorter</string>
+  </property>
+  <property name="statusTip">
+   <string/>
+  </property>
+  <widget class="QWidget" name="centralWidget">
+   <layout class="QVBoxLayout" name="verticalLayout_6" stretch="0,0,1">
+    <item>
+     <layout class="QHBoxLayout" name="parametersLayout">
+      <item>
+       <layout class="QVBoxLayout" name="pathsLayout">
+        <item>
+         <layout class="QVBoxLayout" name="inputDirectoryLayout" stretch="0,0">
+          <item>
+           <widget class="QLabel" name="inputDirectoryLabel">
+            <property name="toolTip">
+             <string/>
+            </property>
+            <property name="text">
+             <string>Input Directory</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="inputDirectoryPathLayout">
+            <item>
+             <widget class="QLineEdit" name="inputDirectoryPathEdit"/>
+            </item>
+            <item>
+             <widget class="QPushButton" name="inputDirectoryBrowseButton">
+              <property name="text">
+               <string>Browse...</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QVBoxLayout" name="outputDirectoryLayout">
+          <item>
+           <widget class="QLabel" name="outputDirectoryLabel">
+            <property name="toolTip">
+             <string/>
+            </property>
+            <property name="text">
+             <string>Output Directory</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="outputDirectoryPathLayout">
+            <item>
+             <widget class="QLineEdit" name="outputDirectoryPathEdit"/>
+            </item>
+            <item>
+             <widget class="QPushButton" name="outputDirectoryBrowseButton">
+              <property name="text">
+               <string>Browse...</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QVBoxLayout" name="outputPreviewLayout">
+          <item>
+           <widget class="QLabel" name="outputPreviewLabel">
+            <property name="toolTip">
+             <string/>
+            </property>
+            <property name="text">
+             <string>Output Preview</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="outputPreviewValueLabel">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="font">
+             <font>
+              <italic>true</italic>
+             </font>
+            </property>
+            <property name="text">
+             <string>&lt;output directory&gt;\2012\December\2012-12-21 12:00.jpg</string>
+            </property>
+            <property name="textFormat">
+             <enum>Qt::AutoText</enum>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <spacer name="pathsSpacer">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="opitionsGroupBox">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="whatsThis">
+         <string/>
+        </property>
+        <property name="autoFillBackground">
+         <bool>false</bool>
+        </property>
+        <property name="title">
+         <string>Options</string>
+        </property>
+        <property name="flat">
+         <bool>false</bool>
+        </property>
+        <property name="checkable">
+         <bool>false</bool>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout_7">
+         <item>
+          <widget class="QCheckBox" name="recursiveCheckBox">
+           <property name="text">
+            <string>Recursive</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="skipUnknownCheckBox">
+           <property name="text">
+            <string>Skip unknown</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QVBoxLayout" name="outputFormatLayout">
+           <item>
+            <widget class="QLabel" name="outputFormatLabel">
+             <property name="toolTip">
+              <string/>
+             </property>
+             <property name="text">
+              <string>Output Format</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="outputFormatComboBox">
+             <property name="editable">
+              <bool>true</bool>
+             </property>
+             <property name="currentText">
+              <string notr="true">%Y/%B</string>
+             </property>
+             <property name="currentIndex">
+              <number>1</number>
+             </property>
+             <item>
+              <property name="text">
+               <string notr="true">%Y</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string notr="true">%Y/%B</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string notr="true">%Y/%m</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string notr="true">%Y/%B/%d</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string notr="true">%Y/%m/%d</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QVBoxLayout" name="renameLayout">
+           <item>
+            <widget class="QCheckBox" name="renameCheckBox">
+             <property name="text">
+              <string>Rename files</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <layout class="QVBoxLayout" name="renameFormatLayout">
+             <item>
+              <widget class="QLabel" name="renameFormatLabel">
+               <property name="toolTip">
+                <string/>
+               </property>
+               <property name="text">
+                <string>Rename Format</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QComboBox" name="renameFormatComboBox">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="editable">
+                <bool>true</bool>
+               </property>
+               <property name="currentText">
+                <string notr="true">%Y-%m-%d %H-%M-%S</string>
+               </property>
+               <property name="currentIndex">
+                <number>0</number>
+               </property>
+               <item>
+                <property name="text">
+                 <string notr="true">%Y-%m-%d %H-%M-%S</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string notr="true">%Y-%m-%d %H-%M</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string notr="true">%Y-%m-%d</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string notr="true">%Y.%m.%d %H.%M.%S</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string notr="true">%Y.%m.%d %H.%M</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string notr="true">%Y.%m.%d</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string notr="true">%d.%m.%Y %H.%M.%S</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string notr="true">%d.%m.%Y %H.%M</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string notr="true">%d.%m.%Y</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string notr="true">%m.%d.%Y %H.%M.%S</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string notr="true">%m.%d.%Y %H.%M</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string notr="true">%m.%d.%Y</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string notr="true">%Y %B %d %H-%M-%S</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string notr="true">%Y %B %d %H-%M</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string notr="true">%Y %B %d</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="buttonsLayout">
+      <item>
+       <spacer name="buttonsSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="sortButton">
+        <property name="text">
+         <string>Sort</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="cancelButton">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="text">
+         <string>Cancel</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <layout class="QVBoxLayout" name="statusLayout">
+      <item>
+       <widget class="QLabel" name="statusLabel">
+        <property name="toolTip">
+         <string/>
+        </property>
+        <property name="text">
+         <string>Status</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QProgressBar" name="statusProgress">
+        <property name="value">
+         <number>0</number>
+        </property>
+        <property name="textVisible">
+         <bool>true</bool>
+        </property>
+        <property name="invertedAppearance">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QListWidget" name="statusList">
+        <property name="showDropIndicator" stdset="0">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>800</width>
+     <height>29</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionQuit"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionAbout"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuHelp"/>
+  </widget>
+  <action name="actionQuit">
+   <property name="text">
+    <string>Quit</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>About</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>renameCheckBox</sender>
+   <signal>clicked(bool)</signal>
+   <receiver>renameFormatComboBox</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>775</x>
+     <y>236</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>774</x>
+     <y>305</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>
