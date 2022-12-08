@@ -44,9 +44,9 @@ class ImageFile:
             new_path = output_path.parent.joinpath(f"{filename}-{i}{extention}")
             i += 1
 
-        # output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         # shutil.copy(self.__path, new_path)
-        # shutil.move(self.__path, new_path)
+        shutil.move(self.__path, new_path)
 
         return new_path
 
@@ -78,8 +78,8 @@ class ImageSorter:
                         img_sorter.sort()
                     else:
                         continue
-
-                self.move(file)
+                else:
+                    self.__move(file)
         except (PermissionError, FileNotFoundError) as e:
             if self.on_error is not None:
                 self.on_error(e)
@@ -88,7 +88,7 @@ class ImageSorter:
             self.on_finish()
 
 
-    def move(self, path: Path):
+    def __move(self, path: Path):
         """Determines new image path and moves the file."""
         img = ImageFile(path)
 
