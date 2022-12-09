@@ -3,6 +3,7 @@ from pathlib import Path
 import unittest
 from unittest.mock import Mock, patch, create_autospec
 
+import exif_sort
 from exif_sort.sorter import ImageSorter
 
 class InputPath(type(Path())):
@@ -111,6 +112,47 @@ class TestImageSorterMove(unittest.TestCase):
             sorter.on_move = on_file_move
 
             sorter.sort()
+
+    def test_group_format(self):
+        ip = create_test_input_path()
+
+        def on_file_move(path, new_path):
+            self.assertEqual(new_path, Path("/home/user/example_output_dir", "2022/12", path.name))
+
+        def on_file_move_2(path, new_path):
+            self.assertEqual(new_path, Path("/home/user/example_output_dir", "Year 2022/December/08", path.name))
+
+        with patch("exif_sort.sorter.ImageFile.get_date_time") as mock_get_date_time:
+            mock_get_date_time.return_value = datetime(2022, 12, 8, 15, 17, 49)
+
+            sorter = ImageSorter(ip)
+            sorter.output_dir = Path("/home/user/example_output_dir")
+
+            sorter.group_format = "%Y/%m"
+            sorter.on_move = on_file_move
+            sorter.sort()
+
+            sorter.group_format = "Year %Y/%B/%d"
+            sorter.on_move = on_file_move_2
+            sorter.sort()
+
+    def test_move_illegal_name(self):
+        exif_sort.sorter.ImageFile.move = Mock(side_effect=OSError)
+
+        ip = create_test_input_path()
+
+        with patch("exif_sort.sorter.ImageFile.get_date_time") as mock_get_date_time:
+            mock_get_date_time.return_value = datetime(2022, 12, 8, 15, 17, 49)
+
+            sorter = ImageSorter(ip)
+            sorter.output_dir = Path("/home/user/example_output_dir")
+
+            sorter.on_error = Mock()
+
+            sorter.sort()
+
+            self.assertEqual(sorter.on_error.call_count, 4)
+
 
 if __name__ == "__main__":
     unittest.main()
