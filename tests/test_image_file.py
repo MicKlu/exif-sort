@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 
 from PIL import UnidentifiedImageError
 
-from exif_sort.sorter import ImageFile, ImageOpenError
+from exif_sort.sorter import ImageFile, ImageOpenError, ImageMoveError
 from exif_sort.sorter import Image
 
 class ImageFileGetDateCase(unittest.TestCase):
@@ -50,11 +50,11 @@ class ImageFileGetDateCase(unittest.TestCase):
         with self.assertRaises(ImageOpenError):
             img.get_date_time()
 
-@patch("exif_sort.sorter.shutil", Mock())
-@patch.object(Path, "mkdir", Mock())
+@patch("exif_sort.sorter.shutil")
+@patch.object(Path, "mkdir")
 class ImageFileMoveCase(unittest.TestCase):
 
-    def test_output_path_exists(self):
+    def test_output_path_exists(self, mock_mkdir, mock_shutil):
         img = ImageFile("image.jpg")
         
         with patch.object(Path, "exists") as mock_exists:
@@ -63,13 +63,46 @@ class ImageFileMoveCase(unittest.TestCase):
 
         self.assertEqual(new_path, Path("/home/user/existing_path-2.jpg"))
 
-    def test_output_path_no_extension(self):
+    def test_output_path_no_extension(self, mock_mkdir, mock_shutil):
         img = ImageFile("image.jpg")
         
         with patch.object(Path, "exists", return_value=False):
             new_path = img.move(Path("/home/user/existing_path"))
 
         self.assertEqual(new_path, Path("/home/user/existing_path"))
+
+    def test_image_move_error(self, mock_mkdir, mock_shutil):
+        import exif_sort
+
+        mock_mkdir.side_effect = PermissionError
+        
+        img = ImageFile("image.jpg")
+
+        with self.assertRaises(ImageMoveError):
+            img.move(Path("/home/user/existing_path"))
+
+        mock_mkdir.side_effect = None
+        mock_shutil.move.side_effect = PermissionError
+
+        with self.assertRaises(ImageMoveError):
+            img.move(Path("/home/user/existing_path"))
+
+        mock_mkdir.side_effect = OSError
+        mock_shutil.move.side_effect = None
+
+        with self.assertRaises(ImageMoveError):
+            img.move(Path("/home/user/existing_path"))
+
+        mock_mkdir.side_effect = None
+        mock_shutil.move.side_effect = OSError
+
+        with self.assertRaises(ImageMoveError):
+            img.move(Path("/home/user/existing_path"))
+
+        mock_shutil.move.side_effect = FileNotFoundError
+
+        with self.assertRaises(ImageMoveError):
+            img.move(Path("/home/user/existing_path"))
 
 if __name__ == "__main__":
     unittest.main()

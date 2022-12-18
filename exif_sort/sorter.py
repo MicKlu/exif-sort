@@ -11,6 +11,13 @@ class ImageOpenError(Exception):
     def __init__(self, path):
         super().__init__(f"Couldn't open image ({path})")
 
+class ImageMoveError(Exception):
+    """Raised if image couldn't be moved."""
+    def __init__(self, path, reason: Exception):
+        super().__init__(f"Couldn't move image ({path})")
+
+        self.reason: Exception = reason
+
 class ImageFile:
     """Class for operating on image file."""
     def __init__(self, path: Path):
@@ -44,9 +51,11 @@ class ImageFile:
             new_path = output_path.parent.joinpath(f"{filename}-{i}{extention}")
             i += 1
 
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        # shutil.copy(self.__path, new_path)
-        shutil.move(self.__path, new_path)
+        try:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(self.__path, new_path)
+        except OSError as e:
+            raise ImageMoveError(self.__path, e)
 
         return new_path
 
@@ -79,8 +88,12 @@ class ImageSorter:
                     else:
                         continue
                 else:
-                    self.__move(file)
-        except (PermissionError, FileNotFoundError) as e:
+                    try:
+                        self.__move(file)
+                    except ImageMoveError as e:
+                        if self.on_error is not None:
+                            self.on_error(e)
+        except OSError as e:
             if self.on_error is not None:
                 self.on_error(e)
 

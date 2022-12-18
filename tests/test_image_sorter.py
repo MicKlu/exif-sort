@@ -3,8 +3,10 @@ from pathlib import Path
 import unittest
 from unittest.mock import Mock, patch, create_autospec
 
+import PIL
+
 import exif_sort
-from exif_sort.sorter import ImageSorter
+from exif_sort.sorter import ImageSorter, ImageMoveError
 
 class InputPath(type(Path())):
     def __init__(self, path: str, is_dir=False, *args, **kwargs):
@@ -136,8 +138,21 @@ class TestImageSorterMove(unittest.TestCase):
             sorter.on_move = on_file_move_2
             sorter.sort()
 
-    def test_move_illegal_name(self):
-        exif_sort.sorter.ImageFile.move = Mock(side_effect=OSError)
+    def test_move_input_dir_no_permission(self):
+        ip = create_test_input_path()
+        ip.iterdir = Mock(side_effect=PermissionError)
+
+        sorter = ImageSorter(ip)
+        sorter.output_dir = Path("/home/user/example_output_dir")
+
+        sorter.on_error = Mock()
+
+        sorter.sort()
+
+        self.assertEqual(sorter.on_error.call_count, 1)
+
+    def test_move_error(self):
+        exif_sort.sorter.ImageFile.move = Mock(side_effect=ImageMoveError("error_image.jpg", OSError))
 
         ip = create_test_input_path()
 
