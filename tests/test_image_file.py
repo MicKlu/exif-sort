@@ -23,7 +23,7 @@ class ImageFileGetDateCase(unittest.TestCase):
     @patch.object(Image, "open")
     def test_file_has_exif(self, mock_open: Mock):
         mock_open.return_value = self.create_image(datetime.now().strftime("%Y:%m:%d %H:%M:%S"))
-        
+
         img = ImageFile("mock_file.jpg")
         date_time = img.get_date_time()
 
@@ -56,7 +56,7 @@ class ImageFileMoveCase(unittest.TestCase):
 
     def test_output_path_exists(self, mock_mkdir, mock_shutil):
         img = ImageFile("image.jpg")
-        
+
         with patch.object(Path, "exists") as mock_exists:
             mock_exists.side_effect = [True, True, False]
             new_path = img.move(Path("/home/user/existing_path.jpg"))
@@ -65,7 +65,7 @@ class ImageFileMoveCase(unittest.TestCase):
 
     def test_output_path_no_extension(self, mock_mkdir, mock_shutil):
         img = ImageFile("image.jpg")
-        
+
         with patch.object(Path, "exists", return_value=False):
             new_path = img.move(Path("/home/user/existing_path"))
 
@@ -75,7 +75,7 @@ class ImageFileMoveCase(unittest.TestCase):
         import exif_sort
 
         mock_mkdir.side_effect = PermissionError
-        
+
         img = ImageFile("image.jpg")
 
         with self.assertRaises(ImageMoveError):

@@ -74,7 +74,7 @@ def mock_move(self, output_path):
 
 @patch.object(ImageSorter, "_ImageSorter__move")
 class TestImageSorterSort(unittest.TestCase):
-    
+
     def test_simple_sort(self, mock_sorter_move: Mock):
         ip = create_test_input_path()
 
@@ -95,7 +95,6 @@ class TestImageSorterSort(unittest.TestCase):
         sorter.sort()
 
         self.assertEqual(mock_sorter_move.call_count, 12)
-    
 
 @patch("exif_sort.sorter.ImageFile.move", mock_move)
 class TestImageSorterMove(unittest.TestCase):
@@ -138,6 +137,59 @@ class TestImageSorterMove(unittest.TestCase):
             sorter.on_move = on_file_move_2
             sorter.sort()
 
+    def test_rename_format(self):
+        ip = create_test_input_path()
+
+        def on_file_move(path, new_path):
+            self.assertEqual(new_path, Path("/home/user/example_output_dir", "2022/December/08", "08 December.jpg"))
+
+        def on_file_move_2(path, new_path):
+            self.assertEqual(new_path, Path("/home/user/example_output_dir", path.name))
+
+        with patch("exif_sort.sorter.ImageFile.get_date_time") as mock_get_date_time:
+            mock_get_date_time.return_value = datetime(2022, 12, 8, 15, 17, 49)
+
+            sorter = ImageSorter(ip)
+            sorter.output_dir = Path("/home/user/example_output_dir")
+
+            sorter.rename_format = "%d %B"
+            sorter.on_move = on_file_move
+            sorter.sort()
+
+            mock_get_date_time.return_value = None
+            
+            sorter.sort_unknown = True
+            sorter.on_move = on_file_move_2
+            sorter.sort()
+
+    def test_sort_unknown(self):
+        ip = create_test_input_path()
+
+        with patch("exif_sort.sorter.ImageFile.get_date_time") as mock_get_date_time:
+            mock_get_date_time.side_effect = [
+                datetime(2022, 12, 8, 15, 17, 49),
+                None,
+                None,
+                datetime(2022, 12, 9, 16, 6, 23)
+            ]
+
+            sorter = ImageSorter(ip)
+            sorter.output_dir = Path("/home/user/example_output_dir")
+            sorter.sort_unknown = False
+
+            sorter.on_move = Mock()
+
+            sorter.sort()
+
+            self.assertEqual(sorter.on_move.call_count, 2)
+
+            sorter.sort_unknown = True
+            sorter.on_move = Mock()
+
+            sorter.sort()
+
+            self.assertEqual(sorter.on_move.call_count, 4)
+
     def test_move_input_dir_no_permission(self):
         ip = create_test_input_path()
         ip.iterdir = Mock(side_effect=PermissionError)
@@ -167,7 +219,6 @@ class TestImageSorterMove(unittest.TestCase):
             sorter.sort()
 
             self.assertEqual(sorter.on_error.call_count, 4)
-
 
 if __name__ == "__main__":
     unittest.main()
