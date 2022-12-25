@@ -1,4 +1,5 @@
 from datetime import datetime
+import locale
 from pathlib import Path
 import unittest
 from unittest.mock import Mock, patch, create_autospec
@@ -98,6 +99,10 @@ class TestImageSorterSort(unittest.TestCase):
 
 @patch("exif_sort.sorter.ImageFile.move", mock_move)
 class TestImageSorterMove(unittest.TestCase):
+
+    def setUp(self):
+        locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
+
     def test_simple_move(self):
         ip = create_test_input_path()
 
