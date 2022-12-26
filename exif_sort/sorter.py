@@ -16,6 +16,7 @@ class ImageMoveError(Exception):
     def __init__(self, path, reason: Exception):
         super().__init__(f"Couldn't move image ({path})")
 
+        self.path = path
         self.reason: Exception = reason
 
 class ImageFile:

@@ -7,10 +7,10 @@ from typing import Union
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QFileDialog
 
 from exif_sort.main import MainWindow, ImageSorter
-from exif_sort.sorter import ImageSorter
+from exif_sort.sorter import ImageSorter, ImageMoveError
 
 main_module = importlib.import_module(".main", "exif_sort")
 
@@ -124,6 +124,7 @@ class ImageSorterInitCase(unittest.TestCase):
         self.click_sort()
         self.assertEqual(mock_sorter_instance.rename_format, "%d/%m.%Y at %H_%M")
 
+@patch.object(main_module, "ImageSorter")
 class UISorterInteractionCase(unittest.TestCase):
 
     def setUp(self):
@@ -133,7 +134,6 @@ class UISorterInteractionCase(unittest.TestCase):
     def click_sort(self):
         QTest.mouseClick(self.window.sortButton, Qt.MouseButton.LeftButton)
 
-    @patch.object(main_module, "ImageSorter")
     def test_hide_show_buttons(self, mock_sorter: Union["ImageSorter", Mock]):
         mock_sorter_instance = Mock()
         mock_sorter.return_value = mock_sorter_instance
@@ -151,7 +151,6 @@ class UISorterInteractionCase(unittest.TestCase):
         self.assertTrue(self.window.sortButton.isVisibleTo(self.window))
         self.assertFalse(self.window.cancelButton.isVisibleTo(self.window))
 
-    @patch.object(main_module, "ImageSorter")
     def test_disable_enable_ui(self, mock_sorter: Union["ImageSorter", Mock]):
         mock_sorter_instance = Mock()
         mock_sorter.return_value = mock_sorter_instance
@@ -199,3 +198,112 @@ class UISorterInteractionCase(unittest.TestCase):
         mock_sorter_instance.on_finish()
 
         self.assertTrue(self.window.renameFormatComboBox.isEnabled())
+
+class ImageSorterStatusCase(unittest.TestCase):
+
+    def setUp(self):
+        self.window = MainWindow()
+        self.window.inputDirectoryPathEdit.setText("/home/user/images")
+
+    def click_sort(self):
+        QTest.mouseClick(self.window.sortButton, Qt.MouseButton.LeftButton)
+
+    @patch.object(main_module, "ImageSorter")
+    def test_on_move(self, mock_sorter: Union["ImageSorter", Mock]):
+        mock_sorter_instance = Mock()
+        mock_sorter.return_value = mock_sorter_instance
+
+        self.click_sort()
+
+        mock_sorter_instance.on_move("/home/user/images/image1.png", Path.home() / Path("image1.png"))
+
+        items_count = self.window.statusList.count()
+        msg = self.window.statusList.item(items_count - 1).text()
+
+        self.assertRegex(msg, "Moved")
+
+    @patch.object(main_module, "ImageSorter")
+    def test_on_skip(self, mock_sorter: Union["ImageSorter", Mock]):
+        mock_sorter_instance = Mock()
+        mock_sorter.return_value = mock_sorter_instance
+
+        self.click_sort()
+
+        mock_sorter_instance.on_skip("/home/user/images/image1.png")
+
+        items_count = self.window.statusList.count()
+        msg = self.window.statusList.item(items_count - 1).text()
+
+        self.assertRegex(msg, "Skipped")
+
+    def test_on_error(self):
+        with patch.object(Path, "iterdir") as mock_iterdir:
+            mock_iterdir.side_effect = [PermissionError, FileNotFoundError, OSError]
+            expected_msg = ["Permission denied", "not found", "Error"]
+
+            for em in expected_msg:
+                self.click_sort()
+
+                items_count = self.window.statusList.count()
+                msg = self.window.statusList.item(items_count - 1).text()
+
+                self.assertRegex(msg, em)
+
+        with patch.object(Path, "iterdir") as mock_iterdir:
+            mock_iterdir.return_value = [Path("/home/user/images/image1.png")]
+            with patch.object(Path, "is_dir") as mock_is_dir:
+                mock_is_dir.return_value = False
+                with patch.object(main_module.ImageSorter, "_ImageSorter__move") as mock___move:
+                    mock___move.side_effect = [
+                        ImageMoveError("/home/user/images/image1.png", PermissionError()),
+                        ImageMoveError("/home/user/images/image1.png", FileNotFoundError()),
+                        ImageMoveError("/home/user/images/image1.png", OSError())
+                    ]
+
+                    expected_msg = ["Permission denied", "not found", "Error"]
+
+                    for em in expected_msg:
+                        self.click_sort()
+
+                        items_count = self.window.statusList.count()
+                        msg = self.window.statusList.item(items_count - 1).text()
+
+                        self.assertRegex(msg, em)
+
+@patch.object(QFileDialog, "getExistingDirectory")
+class BrowseCase(unittest.TestCase):
+
+    def setUp(self):
+        self.window = MainWindow()
+        self.window.inputDirectoryPathEdit.setText("/home/user/images")
+        self.window.outputDirectoryPathEdit.setText("/home/user/images")
+
+    def test_browse_input(self, mock_getExistingDirectory: Mock):
+        mock_getExistingDirectory.side_effect = ["", "/home/user/pictures/"]
+
+        input_widget = self.window.inputDirectoryPathEdit
+
+        self.assertEqual(input_widget.text(), "/home/user/images")
+
+        QTest.mouseClick(self.window.inputDirectoryBrowseButton, Qt.MouseButton.LeftButton)
+
+        self.assertEqual(input_widget.text(), "/home/user/images")
+
+        QTest.mouseClick(self.window.inputDirectoryBrowseButton, Qt.MouseButton.LeftButton)
+
+        self.assertEqual(input_widget.text(), "/home/user/pictures/")
+    
+    def test_browse_output(self, mock_getExistingDirectory: Mock):
+        mock_getExistingDirectory.side_effect = ["", "/home/user/pictures/"]
+
+        output_widget = self.window.outputDirectoryPathEdit
+
+        self.assertEqual(output_widget.text(), "/home/user/images")
+
+        QTest.mouseClick(self.window.outputDirectoryBrowseButton, Qt.MouseButton.LeftButton)
+
+        self.assertEqual(output_widget.text(), "/home/user/images")
+
+        QTest.mouseClick(self.window.outputDirectoryBrowseButton, Qt.MouseButton.LeftButton)
+
+        self.assertEqual(output_widget.text(), "/home/user/pictures/")

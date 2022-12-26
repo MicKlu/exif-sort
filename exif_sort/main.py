@@ -6,7 +6,7 @@ import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QLineEdit
 from exif_sort.ui.main_window import Ui_MainWindow
 
-from exif_sort.sorter import ImageSorter
+from exif_sort.sorter import ImageSorter, ImageMoveError
 
 class MainWindow(QMainWindow, Ui_MainWindow):
 
@@ -188,10 +188,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def __on_sort_error(self, exception: Exception):
         msg = "Error: "
+
+        if isinstance(exception, ImageMoveError):
+            path = exception.path
+            exception = exception.reason
+        elif isinstance(exception, OSError):
+            path = exception.filename
+
         if isinstance(exception, PermissionError):
-            msg += f"Permission denied to {exception.filename}"
+            msg += f"Permission denied to {path}"
         elif isinstance(exception, FileNotFoundError):
-            msg += f"{exception.filename} not found"
+            msg += f"{path} not found"
+        else:
+            msg += str(exception)
 
         self.__log_status(msg)
 
@@ -199,11 +208,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Called when "Cancel" button has been clicked."""
         pass
 
-    def __quit(self):
+    def __quit(self): # pragma: no cover
         """Closes window and exits application."""
         self.close()
 
-def main():
+def main(): # pragma: no cover
     locale.setlocale(locale.LC_ALL, "")
 
     app = QApplication(sys.argv)
