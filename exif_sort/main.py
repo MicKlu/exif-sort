@@ -44,6 +44,31 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.statusList.addItem(msg)
         self.statusList.scrollToBottom()
 
+    def __lock_ui(self, lock=True):
+
+        widgets = [
+            self.inputDirectoryPathEdit,
+            self.inputDirectoryBrowseButton,
+            self.outputDirectoryPathEdit,
+            self.outputDirectoryBrowseButton,
+            self.recursiveCheckBox,
+            self.skipUnknownCheckBox,
+            self.outputFormatComboBox,
+            self.renameCheckBox
+        ]
+
+        for w in widgets:
+            w.setDisabled(lock)
+
+        if lock:
+            self.renameFormatComboBox.setDisabled(True)
+        else:
+            if self.renameCheckBox.isChecked():
+                self.renameFormatComboBox.setDisabled(False)
+
+    def __unlock_ui(self):
+        self.__lock_ui(False)
+
     def __on_input_directory_button_click(self):
         """Called when input's "Browse" button has been clicked."""
         self.__browse_in_out_directory(self.inputDirectoryPathEdit)
@@ -138,6 +163,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.sortButton.setVisible(False)
         self.cancelButton.setVisible(True)
 
+        # Lock UI
+        self.__lock_ui()
+
         # Start sorting
         sorter.sort()
 
@@ -146,6 +174,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Toggle Sort button
         self.sortButton.setVisible(True)
         self.cancelButton.setVisible(False)
+
+        # Unlock UI
+        self.__unlock_ui()
 
     def __on_sort_move(self, old_path: str, new_path: str):
         """Called when file has been moved."""

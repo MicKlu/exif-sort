@@ -116,8 +116,10 @@ class TestImageSorterMove(unittest.TestCase):
             sorter.output_dir = Path("/home/user/example_output_dir")
 
             sorter.on_move = on_file_move
+            sorter.on_finish = Mock()
 
             sorter.sort()
+            sorter.on_finish.called_once()
 
     def test_group_format(self):
         ip = create_test_input_path()
@@ -183,17 +185,21 @@ class TestImageSorterMove(unittest.TestCase):
             sorter.sort_unknown = False
 
             sorter.on_move = Mock()
+            sorter.on_skip = Mock()
 
             sorter.sort()
 
             self.assertEqual(sorter.on_move.call_count, 2)
+            self.assertEqual(sorter.on_skip.call_count, 2)
 
             sorter.sort_unknown = True
             sorter.on_move = Mock()
+            sorter.on_skip = Mock()
 
             sorter.sort()
 
             self.assertEqual(sorter.on_move.call_count, 4)
+            self.assertEqual(sorter.on_skip.call_count, 0)
 
     def test_move_input_dir_no_permission(self):
         ip = create_test_input_path()

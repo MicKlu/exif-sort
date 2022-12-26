@@ -123,3 +123,79 @@ class ImageSorterInitCase(unittest.TestCase):
         self.window.renameFormatComboBox.setCurrentText("  %d/%m.%Y at %H_%M ")
         self.click_sort()
         self.assertEqual(mock_sorter_instance.rename_format, "%d/%m.%Y at %H_%M")
+
+class UISorterInteractionCase(unittest.TestCase):
+
+    def setUp(self):
+        self.window = MainWindow()
+        self.window.inputDirectoryPathEdit.setText("/home/user/images")
+
+    def click_sort(self):
+        QTest.mouseClick(self.window.sortButton, Qt.MouseButton.LeftButton)
+
+    @patch.object(main_module, "ImageSorter")
+    def test_hide_show_buttons(self, mock_sorter: Union["ImageSorter", Mock]):
+        mock_sorter_instance = Mock()
+        mock_sorter.return_value = mock_sorter_instance
+
+        self.assertTrue(self.window.sortButton.isVisibleTo(self.window))
+        self.assertFalse(self.window.cancelButton.isVisibleTo(self.window))
+
+        self.click_sort()
+
+        self.assertFalse(self.window.sortButton.isVisibleTo(self.window))
+        self.assertTrue(self.window.cancelButton.isVisibleTo(self.window))
+
+        mock_sorter_instance.on_finish()
+
+        self.assertTrue(self.window.sortButton.isVisibleTo(self.window))
+        self.assertFalse(self.window.cancelButton.isVisibleTo(self.window))
+
+    @patch.object(main_module, "ImageSorter")
+    def test_disable_enable_ui(self, mock_sorter: Union["ImageSorter", Mock]):
+        mock_sorter_instance = Mock()
+        mock_sorter.return_value = mock_sorter_instance
+
+        always_en_dis_widgets = [
+            self.window.inputDirectoryPathEdit,
+            self.window.inputDirectoryBrowseButton,
+            self.window.outputDirectoryPathEdit,
+            self.window.outputDirectoryBrowseButton,
+            self.window.recursiveCheckBox,
+            self.window.skipUnknownCheckBox,
+            self.window.outputFormatComboBox,
+            self.window.renameCheckBox
+        ]
+
+        # Rename not checked case
+        for w in always_en_dis_widgets:
+            self.assertTrue(w.isEnabled())
+
+        self.assertFalse(self.window.renameFormatComboBox.isEnabled())
+
+        self.click_sort()
+
+        for w in always_en_dis_widgets:
+            self.assertFalse(w.isEnabled())
+
+        self.assertFalse(self.window.renameFormatComboBox.isEnabled())
+
+        mock_sorter_instance.on_finish()
+
+        for w in always_en_dis_widgets:
+            self.assertTrue(w.isEnabled())
+
+        self.assertFalse(self.window.renameFormatComboBox.isEnabled())
+
+        # Rename checked case
+        QTest.mouseClick(self.window.renameCheckBox, Qt.MouseButton.LeftButton)
+
+        self.assertTrue(self.window.renameFormatComboBox.isEnabled())
+
+        self.click_sort()
+
+        self.assertFalse(self.window.renameFormatComboBox.isEnabled())
+
+        mock_sorter_instance.on_finish()
+
+        self.assertTrue(self.window.renameFormatComboBox.isEnabled())
