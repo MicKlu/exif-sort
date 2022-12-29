@@ -2,7 +2,9 @@ from datetime import datetime
 import locale
 from pathlib import Path
 import sys
+from threading import Thread
 
+from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QLineEdit
 from exif_sort.ui.main_window import Ui_MainWindow
 
@@ -14,6 +16,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         super().__init__(parent)
         self.setupUi(self)
 
+        self.__sort_thread = None
         self.__log_status("Ready")
 
     def setupUi(self, MainWindow):
@@ -154,11 +157,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.renameCheckBox.isChecked():
             sorter.rename_format = self.renameFormatComboBox.currentText().strip()
 
-        sorter.on_finish = self.__on_sort_finish
-        sorter.on_move = self.__on_sort_move
-        sorter.on_skip = self.__on_sort_skip
-        sorter.on_error = self.__on_sort_error
-
         # Toggle Cancel button
         self.sortButton.setVisible(False)
         self.cancelButton.setVisible(True)
@@ -167,7 +165,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.__lock_ui()
 
         # Start sorting
-        sorter.sort()
+        self.__sort_thread = SorterThread(sorter)
+
+        self.__sort_thread.on_finish.connect(self.__on_sort_finish)
+        self.__sort_thread.on_move.connect(self.__on_sort_move)
+        self.__sort_thread.on_skip.connect(self.__on_sort_skip)
+        self.__sort_thread.on_error.connect(self.__on_sort_error)
+
+        self.__sort_thread.start()
 
     def __on_sort_finish(self):
         """Called once sorting finishes."""
@@ -211,6 +216,27 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def __quit(self): # pragma: no cover
         """Closes window and exits application."""
         self.close()
+
+class SorterThread(QThread):
+    """Separate thread for sorting task."""
+
+    on_move = pyqtSignal(Path, Path)
+    on_error = pyqtSignal(Exception)
+    on_skip = pyqtSignal(Path)
+    on_finish = pyqtSignal()
+
+    def __init__(self, sorter: ImageSorter):
+        super().__init__()
+        self.__sorter = sorter
+
+        # Map sorter's callbacks to Qt signals
+        self.__sorter.on_move = lambda p1, p2: self.on_move.emit(p1, p2)
+        self.__sorter.on_error = lambda e: self.on_error.emit(e)
+        self.__sorter.on_skip = lambda p: self.on_skip.emit(p)
+        self.__sorter.on_finish = lambda: self.on_finish.emit()
+
+    def run(self):
+        self.__sorter.sort()
 
 def main(): # pragma: no cover
     locale.setlocale(locale.LC_ALL, "")

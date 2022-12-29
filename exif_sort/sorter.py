@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 import copy
 from datetime import datetime
 from pathlib import Path
@@ -38,7 +39,7 @@ class ImageFile:
 
         date_time_str: str = self.__exif.get(306) # 306 - DateTime
 
-        if len(date_time_str) == 0:
+        if date_time_str is None or len(date_time_str) == 0:
             return None
 
         return datetime.strptime(date_time_str, "%Y:%m:%d %H:%M:%S")
@@ -90,15 +91,29 @@ class ImageSorter:
         prepare_thread.start()
         prepare_thread.join()
 
-        sorter_thread = Thread(target=self.__sorting_task)
-        sorter_thread.start()
+        self.__dirs.reverse()
 
-        while True:
-            event = self.__output_queue.get()
-            print(event)
-            if event[0] == "finish":
+        with ThreadPoolExecutor() as executor:
+            futures = []
+            for dir in self.__dirs:
+                f = executor.submit(self.__sorting_task, dir["dir"])
+                futures.append(f)
+
+            while True:
+                event = self.__output_queue.get()
                 
-                break
+                if event[0] == "move" and self.on_move is not None:
+                    self.on_move(*event[1:])
+                elif event[0] == "error" and self.on_error is not None:
+                    self.on_error(event[1])
+                elif event[0] == "skip" and self.on_skip is not None:
+                    self.on_skip(event[1])
+
+                if False not in [f.done() for f in futures] and self.__output_queue.empty():
+                    break
+
+        if self.on_finish is not None:
+            self.on_finish()
 
     def __prepare(self, dir: Path) -> None:
         """Prepares list of directories to sort and counts files."""
@@ -116,34 +131,18 @@ class ImageSorter:
         except OSError as e:
             self.__output_queue.put(("error", e))
 
-    def __sorting_task(self):
+    def __sorting_task(self, dir: Path):
         """Starts sorting loop."""
-        try:
-            for file in self.input_dir.iterdir():
-                if file.is_dir():
-                    if self.recursive:
-                        # If recursive, create new recursive sorter and perform sorting on directory
-                        img_sorter = copy.copy(self)
-                        img_sorter.input_dir = file
+        for file in dir.iterdir():
+            if file.is_dir():
+                continue
 
-                        img_sorter.sort()
-                    else:
-                        continue
-                else:
-                    try:
-                        self.__move(file)
-                    except ImageMoveError as e:
-                        self.__output_queue.put(("error", e))
-                        # if self.on_error is not None:
-                        #     self.on_error(e)
-        except OSError as e:
-            self.__output_queue.put(("error", e))
-            # if self.on_error is not None:
-            #     self.on_error(e)
+            try:
+                self.__move(file)
+            except ImageMoveError as e:
+                self.__output_queue.put(("error", e))
 
         self.__output_queue.put(("finish",))
-        # if self.on_finish is not None:
-        #     self.on_finish()
 
     def __move(self, path: Path):
         """Determines new image path and moves the file."""
@@ -163,8 +162,6 @@ class ImageSorter:
                 filename = date_time.strftime(self.rename_format) + path.suffix
         elif date_time is None and not self.sort_unknown:
             self.__output_queue.put(("skip", path))
-            # if self.on_skip is not None:
-            #     self.on_skip(path)
             return
 
         output_path = output_path.joinpath(filename)
@@ -172,5 +169,4 @@ class ImageSorter:
         new_path = img.move(output_path)
 
         self.__output_queue.put(("move", path, new_path))
-        # if self.on_move is not None:
-        #     self.on_move(path, new_path)
+        

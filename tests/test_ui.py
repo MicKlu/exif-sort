@@ -9,13 +9,14 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QApplication, QFileDialog
 
-from exif_sort.main import MainWindow, ImageSorter
+from exif_sort.main import MainWindow, ImageSorter, SorterThread
 from exif_sort.sorter import ImageSorter, ImageMoveError
 
 main_module = importlib.import_module(".main", "exif_sort")
 
 app = QApplication(sys.argv)
 
+@patch.object(main_module, "SorterThread", Mock())
 @patch.object(main_module, "ImageSorter")
 class ImageSorterInitCase(unittest.TestCase):
 
@@ -124,6 +125,7 @@ class ImageSorterInitCase(unittest.TestCase):
         self.click_sort()
         self.assertEqual(mock_sorter_instance.rename_format, "%d/%m.%Y at %H_%M")
 
+@patch.object(main_module.SorterThread, "start", Mock())
 @patch.object(main_module, "ImageSorter")
 class UISorterInteractionCase(unittest.TestCase):
 
@@ -199,6 +201,7 @@ class UISorterInteractionCase(unittest.TestCase):
 
         self.assertTrue(self.window.renameFormatComboBox.isEnabled())
 
+@patch.object(main_module.SorterThread, "start", lambda self: self._SorterThread__sorter.sort())
 class ImageSorterStatusCase(unittest.TestCase):
 
     def setUp(self):
@@ -215,7 +218,7 @@ class ImageSorterStatusCase(unittest.TestCase):
 
         self.click_sort()
 
-        mock_sorter_instance.on_move("/home/user/images/image1.png", Path.home() / Path("image1.png"))
+        mock_sorter_instance.on_move(Path("/home/user/images/image1.png"), Path.home() / Path("image1.png"))
 
         items_count = self.window.statusList.count()
         msg = self.window.statusList.item(items_count - 1).text()
@@ -229,7 +232,7 @@ class ImageSorterStatusCase(unittest.TestCase):
 
         self.click_sort()
 
-        mock_sorter_instance.on_skip("/home/user/images/image1.png")
+        mock_sorter_instance.on_skip(Path("/home/user/images/image1.png"))
 
         items_count = self.window.statusList.count()
         msg = self.window.statusList.item(items_count - 1).text()
