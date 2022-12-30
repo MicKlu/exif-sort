@@ -76,6 +76,43 @@ def mock_move(self, output_path):
 @patch.object(ImageSorter, "_ImageSorter__move")
 class TestImageSorterSort(unittest.TestCase):
 
+    def test_preparation(self, mock_sorter_move: Mock):
+        ip = create_test_input_path()
+
+        sorter = ImageSorter(ip)
+        sorter.output_dir = Path("/home/user/example_output_dir")
+
+        sorter.sort()
+
+        self.assertEqual(len(sorter._ImageSorter__dirs), 1)
+        self.assertEqual(sorter._ImageSorter__dirs[0]["dir"], ip)
+        self.assertEqual(sorter._ImageSorter__dirs[0]["files"], 4)
+
+    def test_recursive_preparation(self, mock_sorter_move: Mock):
+        ip = create_test_input_path()
+
+        sorter = ImageSorter(ip)
+        sorter.output_dir = Path("/home/user/example_output_dir")
+        sorter.recursive = True
+
+        sorter.sort()
+
+        self.assertEqual(len(sorter._ImageSorter__dirs), 4)
+
+        dirs = [str(d["dir"]) for d in sorter._ImageSorter__dirs]
+
+        self.assertTrue("/home/user/example_input_dir" in dirs)
+        self.assertTrue("/home/user/example_input_dir/holidays" in dirs)
+        self.assertTrue("/home/user/example_input_dir/random stuff" in dirs)
+        self.assertTrue("/home/user/example_input_dir/random stuff/nsfw" in dirs)
+
+        files = {str(d["dir"]): d["files"] for d in sorter._ImageSorter__dirs}
+
+        self.assertEqual(files["/home/user/example_input_dir"], 4)
+        self.assertEqual(files["/home/user/example_input_dir/holidays"], 2)
+        self.assertEqual(files["/home/user/example_input_dir/random stuff"], 3)
+        self.assertEqual(files["/home/user/example_input_dir/random stuff/nsfw"], 3)
+
     def test_simple_sort(self, mock_sorter_move: Mock):
         ip = create_test_input_path()
 

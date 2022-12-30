@@ -2,6 +2,8 @@ import copy
 from datetime import datetime
 from pathlib import Path
 import shutil
+from threading import Thread
+from queue import Queue
 from typing import Callable
 
 from PIL import Image
@@ -53,8 +55,9 @@ class ImageFile:
             i += 1
 
         try:
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.move(self.__path, new_path)
+            pass
+            # output_path.parent.mkdir(parents=True, exist_ok=True)
+            # shutil.move(self.__path, new_path)
         except OSError as e:
             raise ImageMoveError(self.__path, e)
 
@@ -70,12 +73,50 @@ class ImageSorter:
         self.sort_unknown: bool = False
         self.rename_format: str = None
 
+        self.__output_queue = None
+        self.__dirs = None
+
         self.on_finish: Callable = None
         self.on_skip: Callable[Path, Any] = None
         self.on_move: Callable[[Path, Path], Any] = None
         self.on_error: Callable[Exception, Any] = None
 
     def sort(self):
+        """Starts sorting task."""
+        self.__output_queue = Queue()
+        self.__dirs = []
+
+        prepare_thread = Thread(target=self.__prepare, args=(self.input_dir,))
+        prepare_thread.start()
+        prepare_thread.join()
+
+        sorter_thread = Thread(target=self.__sorting_task)
+        sorter_thread.start()
+
+        while True:
+            event = self.__output_queue.get()
+            print(event)
+            if event[0] == "finish":
+                
+                break
+
+    def __prepare(self, dir: Path) -> None:
+        """Prepares list of directories to sort and counts files."""
+        try:
+            files = 0
+            for file in dir.iterdir():
+                if file.is_dir():
+                    if self.recursive:
+                        self.__prepare(file)
+                    else:
+                        continue
+                else:
+                    files += 1
+            self.__dirs.append({"dir": dir, "files": files})
+        except OSError as e:
+            self.__output_queue.put(("error", e))
+
+    def __sorting_task(self):
         """Starts sorting loop."""
         try:
             for file in self.input_dir.iterdir():
@@ -84,7 +125,7 @@ class ImageSorter:
                         # If recursive, create new recursive sorter and perform sorting on directory
                         img_sorter = copy.copy(self)
                         img_sorter.input_dir = file
-                        img_sorter.on_error = self.on_error
+
                         img_sorter.sort()
                     else:
                         continue
@@ -92,15 +133,17 @@ class ImageSorter:
                     try:
                         self.__move(file)
                     except ImageMoveError as e:
-                        if self.on_error is not None:
-                            self.on_error(e)
+                        self.__output_queue.put(("error", e))
+                        # if self.on_error is not None:
+                        #     self.on_error(e)
         except OSError as e:
-            if self.on_error is not None:
-                self.on_error(e)
+            self.__output_queue.put(("error", e))
+            # if self.on_error is not None:
+            #     self.on_error(e)
 
-        if self.on_finish is not None:
-            self.on_finish()
-
+        self.__output_queue.put(("finish",))
+        # if self.on_finish is not None:
+        #     self.on_finish()
 
     def __move(self, path: Path):
         """Determines new image path and moves the file."""
@@ -119,13 +162,15 @@ class ImageSorter:
             if self.rename_format is not None:
                 filename = date_time.strftime(self.rename_format) + path.suffix
         elif date_time is None and not self.sort_unknown:
-            if self.on_skip is not None:
-                self.on_skip(path)
+            self.__output_queue.put(("skip", path))
+            # if self.on_skip is not None:
+            #     self.on_skip(path)
             return
 
         output_path = output_path.joinpath(filename)
 
         new_path = img.move(output_path)
 
-        if self.on_move is not None:
-            self.on_move(path, new_path)
+        self.__output_queue.put(("move", path, new_path))
+        # if self.on_move is not None:
+        #     self.on_move(path, new_path)
