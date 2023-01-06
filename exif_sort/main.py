@@ -179,9 +179,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Toggle Sort button
         self.sortButton.setVisible(True)
         self.cancelButton.setVisible(False)
+        self.cancelButton.setDisabled(False)
 
         # Unlock UI
         self.__unlock_ui()
+
+        # Log sorting cancellation
+        if self.__sort_thread.stopped:
+            self.__log_status("Sorting cancelled")
+
+        # Ready
+        self.__log_status("Ready")
 
     def __on_sort_move(self, old_path: str, new_path: str):
         """Called when file has been moved."""
@@ -211,7 +219,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def __on_cancel_button_click(self):
         """Called when "Cancel" button has been clicked."""
-        pass
+        self.cancelButton.setDisabled(True)
+        self.__sort_thread.stop()
 
     def __quit(self): # pragma: no cover
         """Closes window and exits application."""
@@ -229,6 +238,8 @@ class SorterThread(QThread):
         super().__init__()
         self.__sorter = sorter
 
+        self.stopped = False
+
         # Map sorter's callbacks to Qt signals
         self.__sorter.on_move = lambda p1, p2: self.on_move.emit(p1, p2)
         self.__sorter.on_error = lambda e: self.on_error.emit(e)
@@ -237,6 +248,10 @@ class SorterThread(QThread):
 
     def run(self):
         self.__sorter.sort()
+
+    def stop(self):
+        self.stopped = True
+        self.__sorter.cancel()
 
 def main(): # pragma: no cover
     locale.setlocale(locale.LC_ALL, "")

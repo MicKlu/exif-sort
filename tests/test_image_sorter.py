@@ -1,6 +1,7 @@
 from datetime import datetime
 import locale
 from pathlib import Path
+import time
 import threading
 from threading import Thread
 import unittest
@@ -135,6 +136,25 @@ class TestImageSorterSort(unittest.TestCase):
         sorter.sort()
 
         self.assertEqual(mock_sorter_move.call_count, 12)
+
+    def test_cancel_sort(self, mock_sorter_move: Mock):
+        ip = create_test_input_path()
+
+        sorter = ImageSorter(ip)
+        sorter.output_dir = Path("/home/user/example_output_dir")
+
+        mock_sorter_move.side_effect = lambda file: time.sleep(1)
+
+        sorter_thread = Thread(target=sorter.sort)
+        sorter_thread.start()
+
+        time.sleep(2)
+
+        sorter.cancel()
+        sorter_thread.join()
+
+        self.assertGreaterEqual(mock_sorter_move.call_count, 2)
+        self.assertLess(mock_sorter_move.call_count, 4)
 
 @patch("exif_sort.sorter.ImageFile.move", mock_move)
 class TestImageSorterMove(unittest.TestCase):

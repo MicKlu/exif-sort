@@ -56,9 +56,8 @@ class ImageFile:
             i += 1
 
         try:
-            pass
-            # output_path.parent.mkdir(parents=True, exist_ok=True)
-            # shutil.move(self.__path, new_path)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(self.__path, new_path)
         except OSError as e:
             raise ImageMoveError(self.__path, e)
 
@@ -76,6 +75,7 @@ class ImageSorter:
 
         self.__output_queue = None
         self.__dirs = None
+        self.__cancelled = False
 
         self.on_finish: Callable = None
         self.on_skip: Callable[Path, Any] = None
@@ -115,11 +115,18 @@ class ImageSorter:
         if self.on_finish is not None:
             self.on_finish()
 
+    def cancel(self) -> None:
+        """Requests cancellation of sorting task."""
+        self.__cancelled = True
+
     def __prepare(self, dir: Path) -> None:
         """Prepares list of directories to sort and counts files."""
         try:
             files = 0
             for file in dir.iterdir():
+                if self.__cancelled:
+                    break
+
                 if file.is_dir():
                     if self.recursive:
                         self.__prepare(file)
@@ -133,14 +140,20 @@ class ImageSorter:
 
     def __sorting_task(self, dir: Path):
         """Starts sorting loop."""
-        for file in dir.iterdir():
-            if file.is_dir():
-                continue
+        try:
+            for file in dir.iterdir():
+                if self.__cancelled:
+                    break
 
-            try:
-                self.__move(file)
-            except ImageMoveError as e:
-                self.__output_queue.put(("error", e))
+                if file.is_dir():
+                    continue
+
+                try:
+                    self.__move(file)
+                except ImageMoveError as e:
+                    self.__output_queue.put(("error", e))
+        except Exception as e:
+            self.__output_queue.put(("error", e))
 
         self.__output_queue.put(("finish",))
 

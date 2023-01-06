@@ -136,6 +136,9 @@ class UISorterInteractionCase(unittest.TestCase):
     def click_sort(self):
         QTest.mouseClick(self.window.sortButton, Qt.MouseButton.LeftButton)
 
+    def click_cancel(self):
+        QTest.mouseClick(self.window.cancelButton, Qt.MouseButton.LeftButton)
+
     def test_hide_show_buttons(self, mock_sorter: Union["ImageSorter", Mock]):
         mock_sorter_instance = Mock()
         mock_sorter.return_value = mock_sorter_instance
@@ -201,6 +204,25 @@ class UISorterInteractionCase(unittest.TestCase):
 
         self.assertTrue(self.window.renameFormatComboBox.isEnabled())
 
+    def test_cancel_button(self, mock_sorter: Union["ImageSorter", Mock]):
+        mock_sorter_instance = Mock()
+        mock_sorter.return_value = mock_sorter_instance
+
+        self.assertTrue(self.window.sortButton.isVisibleTo(self.window))
+
+        self.click_sort()
+
+        self.assertTrue(self.window.cancelButton.isVisibleTo(self.window))
+
+        self.click_cancel()
+
+        self.assertFalse(self.window.cancelButton.isEnabled())
+        mock_sorter_instance.cancel.assert_called()
+
+        mock_sorter_instance.on_finish()
+
+        self.assertTrue(self.window.cancelButton.isEnabled())
+
 @patch.object(main_module.SorterThread, "start", lambda self: self._SorterThread__sorter.sort())
 class ImageSorterStatusCase(unittest.TestCase):
 
@@ -210,6 +232,9 @@ class ImageSorterStatusCase(unittest.TestCase):
 
     def click_sort(self):
         QTest.mouseClick(self.window.sortButton, Qt.MouseButton.LeftButton)
+
+    def click_cancel(self):
+        QTest.mouseClick(self.window.cancelButton, Qt.MouseButton.LeftButton)
 
     @patch.object(main_module, "ImageSorter")
     def test_on_move(self, mock_sorter: Union["ImageSorter", Mock]):
@@ -272,6 +297,31 @@ class ImageSorterStatusCase(unittest.TestCase):
                         msg = self.window.statusList.item(items_count - 1).text()
 
                         self.assertRegex(msg, em)
+
+    @patch.object(main_module, "ImageSorter")
+    def test_on_finish(self, mock_sorter: Union["ImageSorter", Mock]):
+        mock_sorter_instance = Mock()
+        mock_sorter.return_value = mock_sorter_instance
+
+        self.click_sort()
+
+        mock_sorter_instance.on_move(Path("/home/user/images/image1.png"), Path.home() / Path("image1.png"))
+        mock_sorter_instance.on_finish()
+
+        items_count = self.window.statusList.count()
+        msg = self.window.statusList.item(items_count - 1).text()
+
+        self.assertRegex(msg, "Ready")
+
+        self.click_sort()
+        mock_sorter_instance.on_move(Path("/home/user/images/image1.png"), Path.home() / Path("image1.png"))
+        self.click_cancel()
+        mock_sorter_instance.on_finish()
+
+        items_count = self.window.statusList.count()
+        msg = self.window.statusList.item(items_count - 2).text()
+
+        self.assertRegex(msg, "cancel")
 
 @patch.object(QFileDialog, "getExistingDirectory")
 class BrowseCase(unittest.TestCase):
