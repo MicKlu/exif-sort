@@ -1,5 +1,6 @@
 from datetime import datetime
 import locale
+import math
 from pathlib import Path
 import sys
 from threading import Thread
@@ -129,6 +130,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.outputPreviewValueLabel.setText(str(output_path) + ".jpg")
 
+    def __update_progress_bar(self, value: float):
+        """
+        Sets progress bar to specified value.
+
+        Value must be in range of [0;1].
+        """
+        self.statusProgress.setValue(math.floor(value * 100))
+
     def __on_sort_button_click(self):
         """Called when "Sort" button has been clicked."""
         # Get input path
@@ -191,15 +200,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Ready
         self.__log_status("Ready")
 
-    def __on_sort_move(self, old_path: str, new_path: str):
+    def __on_sort_move(self, old_path: str, new_path: str, progress: float):
         """Called when file has been moved."""
         self.__log_status(f"Moved \"{old_path}\" to \"{new_path}\"")
+        self.__update_progress_bar(progress)
 
-    def __on_sort_skip(self, path: str):
+    def __on_sort_skip(self, path: str, progress: float):
         """Called when file has been skipped."""
         self.__log_status(f"Skipped \"{path}\"")
+        self.__update_progress_bar(progress)
 
-    def __on_sort_error(self, exception: Exception):
+    def __on_sort_error(self, exception: Exception, progress: float):
         msg = "Error: "
 
         if isinstance(exception, ImageMoveError):
@@ -216,6 +227,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             msg += str(exception)
 
         self.__log_status(msg)
+        self.__update_progress_bar(progress)
 
     def __on_cancel_button_click(self):
         """Called when "Cancel" button has been clicked."""
@@ -229,9 +241,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 class SorterThread(QThread):
     """Separate thread for sorting task."""
 
-    on_move = pyqtSignal(Path, Path)
-    on_error = pyqtSignal(Exception)
-    on_skip = pyqtSignal(Path)
+    on_move = pyqtSignal(Path, Path, float)
+    on_error = pyqtSignal(Exception, float)
+    on_skip = pyqtSignal(Path, float)
     on_finish = pyqtSignal()
 
     def __init__(self, sorter: ImageSorter):
@@ -241,9 +253,9 @@ class SorterThread(QThread):
         self.stopped = False
 
         # Map sorter's callbacks to Qt signals
-        self.__sorter.on_move = lambda p1, p2: self.on_move.emit(p1, p2)
-        self.__sorter.on_error = lambda e: self.on_error.emit(e)
-        self.__sorter.on_skip = lambda p: self.on_skip.emit(p)
+        self.__sorter.on_move = lambda p1, p2, pr: self.on_move.emit(p1, p2, pr)
+        self.__sorter.on_error = lambda e, pr: self.on_error.emit(e, pr)
+        self.__sorter.on_skip = lambda p, pr: self.on_skip.emit(p, pr)
         self.__sorter.on_finish = lambda: self.on_finish.emit()
 
     def run(self):

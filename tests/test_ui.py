@@ -3,6 +3,7 @@ from pathlib import Path
 import unittest
 from unittest.mock import Mock, patch, PropertyMock
 import sys
+from threading import Thread
 from typing import Union
 
 from PyQt5.QtCore import Qt
@@ -223,6 +224,24 @@ class UISorterInteractionCase(unittest.TestCase):
 
         self.assertTrue(self.window.cancelButton.isEnabled())
 
+    def test_progress(self, mock_sorter: Union["ImageSorter", Mock]):
+        mock_sorter_instance = Mock()
+        mock_sorter.return_value = mock_sorter_instance
+
+        self.click_sort()
+
+        mock_sorter_instance.on_move(Path(), Path(), 0.25)
+
+        self.assertEqual(self.window.statusProgress.value(), 25)
+
+        mock_sorter_instance.on_skip(Path(), 0.50999999)
+
+        self.assertEqual(self.window.statusProgress.value(), 50)
+
+        mock_sorter_instance.on_error(RuntimeError(), 1.0)
+
+        self.assertEqual(self.window.statusProgress.value(), 100)
+
 @patch.object(main_module.SorterThread, "start", lambda self: self._SorterThread__sorter.sort())
 class ImageSorterStatusCase(unittest.TestCase):
 
@@ -243,7 +262,7 @@ class ImageSorterStatusCase(unittest.TestCase):
 
         self.click_sort()
 
-        mock_sorter_instance.on_move(Path("/home/user/images/image1.png"), Path.home() / Path("image1.png"))
+        mock_sorter_instance.on_move(Path("/home/user/images/image1.png"), Path.home() / Path("image1.png"), 1)
 
         items_count = self.window.statusList.count()
         msg = self.window.statusList.item(items_count - 1).text()
@@ -257,7 +276,7 @@ class ImageSorterStatusCase(unittest.TestCase):
 
         self.click_sort()
 
-        mock_sorter_instance.on_skip(Path("/home/user/images/image1.png"))
+        mock_sorter_instance.on_skip(Path("/home/user/images/image1.png"), 1)
 
         items_count = self.window.statusList.count()
         msg = self.window.statusList.item(items_count - 1).text()
@@ -273,7 +292,7 @@ class ImageSorterStatusCase(unittest.TestCase):
                 self.click_sort()
 
                 items_count = self.window.statusList.count()
-                msg = self.window.statusList.item(items_count - 1).text()
+                msg = self.window.statusList.item(items_count - 2).text()
 
                 self.assertRegex(msg, em)
 
@@ -294,7 +313,7 @@ class ImageSorterStatusCase(unittest.TestCase):
                         self.click_sort()
 
                         items_count = self.window.statusList.count()
-                        msg = self.window.statusList.item(items_count - 1).text()
+                        msg = self.window.statusList.item(items_count - 2).text()
 
                         self.assertRegex(msg, em)
 
@@ -305,7 +324,7 @@ class ImageSorterStatusCase(unittest.TestCase):
 
         self.click_sort()
 
-        mock_sorter_instance.on_move(Path("/home/user/images/image1.png"), Path.home() / Path("image1.png"))
+        mock_sorter_instance.on_move(Path("/home/user/images/image1.png"), Path.home() / Path("image1.png"), 1)
         mock_sorter_instance.on_finish()
 
         items_count = self.window.statusList.count()
@@ -314,7 +333,7 @@ class ImageSorterStatusCase(unittest.TestCase):
         self.assertRegex(msg, "Ready")
 
         self.click_sort()
-        mock_sorter_instance.on_move(Path("/home/user/images/image1.png"), Path.home() / Path("image1.png"))
+        mock_sorter_instance.on_move(Path("/home/user/images/image1.png"), Path.home() / Path("image1.png"), 1)
         self.click_cancel()
         mock_sorter_instance.on_finish()
 

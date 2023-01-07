@@ -2,7 +2,6 @@ from datetime import datetime
 import locale
 from pathlib import Path
 import time
-import threading
 from threading import Thread
 import unittest
 from unittest.mock import Mock, patch, create_autospec
@@ -165,7 +164,7 @@ class TestImageSorterMove(unittest.TestCase):
     def test_simple_move(self):
         ip = create_test_input_path()
 
-        def on_file_move(path, new_path):
+        def on_file_move(path, new_path, progress):
             self.assertEqual(new_path, Path("/home/user/example_output_dir", "2022/December/08", path.name))
 
         with patch("exif_sort.sorter.ImageFile.get_date_time") as mock_get_date_time:
@@ -183,10 +182,10 @@ class TestImageSorterMove(unittest.TestCase):
     def test_group_format(self):
         ip = create_test_input_path()
 
-        def on_file_move(path, new_path):
+        def on_file_move(path, new_path, progress):
             self.assertEqual(new_path, Path("/home/user/example_output_dir", "2022/12", path.name))
 
-        def on_file_move_2(path, new_path):
+        def on_file_move_2(path, new_path, progress):
             self.assertEqual(new_path, Path("/home/user/example_output_dir", "Year 2022/December/08", path.name))
 
         with patch("exif_sort.sorter.ImageFile.get_date_time") as mock_get_date_time:
@@ -206,10 +205,10 @@ class TestImageSorterMove(unittest.TestCase):
     def test_rename_format(self):
         ip = create_test_input_path()
 
-        def on_file_move(path, new_path):
+        def on_file_move(path, new_path, progress):
             self.assertEqual(new_path, Path("/home/user/example_output_dir", "2022/December/08", "08 December.jpg"))
 
-        def on_file_move_2(path, new_path):
+        def on_file_move_2(path, new_path, progress):
             self.assertEqual(new_path, Path("/home/user/example_output_dir", path.name))
 
         with patch("exif_sort.sorter.ImageFile.get_date_time") as mock_get_date_time:
@@ -289,6 +288,91 @@ class TestImageSorterMove(unittest.TestCase):
             sorter.sort()
 
             self.assertEqual(sorter.on_error.call_count, 4)
+
+@patch("exif_sort.sorter.ImageFile.get_date_time")
+class TestImageSorterProgress(unittest.TestCase):
+
+    def setUp(self):
+        self.__ip = create_test_input_path()
+        self.__progress_list = []
+
+    def on_progress(self, *args):
+        self.__progress_list.append(args[-1])
+
+    @patch("exif_sort.sorter.ImageFile.move", lambda self, path: path)
+    def test_move_all(self, mock_get_date_time: Mock):
+        mock_get_date_time.return_value = datetime(2022, 12, 8, 15, 17, 49)
+
+        sorter = ImageSorter(self.__ip)
+        sorter.output_dir = Path("/home/user/example_output_dir")
+
+        sorter.on_move = self.on_progress
+
+        sorter.sort()
+
+        self.assertEqual(self.__progress_list, [0.25, 0.5, 0.75, 1])
+
+        self.__progress_list = []
+
+        sorter.recursive = True
+        sorter.sort()
+
+        self.assertEqual(self.__progress_list, [1/12, 1/6, 0.25, 1/3, 5/12, 0.5, 7/12, 2/3, 0.75, 5/6, 11/12, 1])
+
+    @patch("exif_sort.sorter.ImageFile.move", lambda self, path: path)
+    def test_move_and_skip(self, mock_get_date_time: Mock):
+        mock_get_date_time.side_effect = [
+            datetime(2022, 12, 8, 15, 17, 49),
+            None,
+            None,
+            datetime(2022, 12, 9, 16, 6, 23)
+        ]
+
+        sorter = ImageSorter(self.__ip)
+        sorter.output_dir = Path("/home/user/example_output_dir")
+
+        sorter.on_move = self.on_progress
+        sorter.on_skip = self.on_progress
+
+        sorter.sort()
+
+        self.assertEqual(self.__progress_list, [0.25, 0.5, 0.75, 1])
+
+    @patch("exif_sort.sorter.ImageFile.move")
+    def test_some_errors(self, mock_move: Mock, mock_get_date_time: Mock):
+        mock_get_date_time.return_value = datetime(2022, 12, 8, 15, 17, 49)
+
+        sorter = ImageSorter(self.__ip)
+        sorter.output_dir = Path("/home/user/example_output_dir")
+
+        sorter.on_move = self.on_progress
+        sorter.on_error = self.on_progress
+
+        # ImageMoveError case
+        mock_move.side_effect = [
+            lambda self, path: path,
+            lambda self, path: ImageMoveError(path, PermissionError()),
+            lambda self, path: ImageMoveError(path, PermissionError()),
+            lambda self, path: path,
+        ]
+
+        sorter.sort()
+
+        self.assertEqual(self.__progress_list, [0.25, 0.5, 0.75, 1])
+
+        # Not ImageMoveError related errors case
+        self.__progress_list = []
+
+        mock_move.side_effect = [
+            lambda self, path: path,
+            lambda self, path: path,
+            RuntimeError,
+            lambda self, path: path,
+        ]
+
+        sorter.sort()
+
+        self.assertEqual(self.__progress_list, [0.25, 0.5, 1])
 
 if __name__ == "__main__":
     unittest.main()
