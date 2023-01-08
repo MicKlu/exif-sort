@@ -2,5 +2,6 @@
 
 import sys
 
-import exif_sort
-sys.exit(exif_sort.main())
+from exif_sort.main import main
+
+sys.exit(main())

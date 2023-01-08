@@ -8,9 +8,9 @@ from PIL import UnidentifiedImageError
 from exif_sort.sorter import ImageFile, ImageOpenError, ImageMoveError
 from exif_sort.sorter import Image
 
-class ImageFileGetDateCase(unittest.TestCase):
 
-    def create_image(self, exif_date = "") -> Mock:
+class ImageFileGetDateCase(unittest.TestCase):
+    def create_image(self, exif_date="") -> Mock:
         mock_image = Mock()
 
         mock_exif = Mock()
@@ -22,7 +22,9 @@ class ImageFileGetDateCase(unittest.TestCase):
 
     @patch.object(Image, "open")
     def test_file_has_exif(self, mock_open: Mock):
-        mock_open.return_value = self.create_image(datetime.now().strftime("%Y:%m:%d %H:%M:%S"))
+        mock_open.return_value = self.create_image(
+            datetime.now().strftime("%Y:%m:%d %H:%M:%S")
+        )
 
         img = ImageFile("mock_file.jpg")
         date_time = img.get_date_time()
@@ -37,7 +39,11 @@ class ImageFileGetDateCase(unittest.TestCase):
         date_time = img.get_date_time()
         self.assertIsNone(date_time)
 
-    @patch.object(Image, "open", side_effect=[FileNotFoundError, UnidentifiedImageError, PermissionError])
+    @patch.object(
+        Image,
+        "open",
+        side_effect=[FileNotFoundError, UnidentifiedImageError, PermissionError],
+    )
     def test_file_open_error(self, mock_open: Mock):
 
         img = ImageFile("not_existing_file.txt")
@@ -50,10 +56,10 @@ class ImageFileGetDateCase(unittest.TestCase):
         with self.assertRaises(ImageOpenError):
             img.get_date_time()
 
+
 @patch("exif_sort.sorter.shutil")
 @patch.object(Path, "mkdir")
 class ImageFileMoveCase(unittest.TestCase):
-
     def test_output_path_exists(self, mock_mkdir, mock_shutil):
         img = ImageFile("image.jpg")
 
@@ -103,6 +109,7 @@ class ImageFileMoveCase(unittest.TestCase):
 
         with self.assertRaises(ImageMoveError):
             img.move(Path("/home/user/existing_path"))
+
 
 if __name__ == "__main__":
     unittest.main()

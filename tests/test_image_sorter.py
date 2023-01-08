@@ -11,6 +11,7 @@ import PIL
 import exif_sort
 from exif_sort.sorter import ImageSorter, ImageMoveError
 
+
 class InputPath(type(Path())):
     def __init__(self, path: str, is_dir=False, *args, **kwargs):
         super().__init__()
@@ -49,6 +50,7 @@ class InputPath(type(Path())):
                 for ff in f.itertree():
                     yield ff
 
+
 def create_test_input_path() -> InputPath:
     ip = InputPath("/home/user/example_input_dir", is_dir=True)
     ip.add_file("image1.jpg")
@@ -59,7 +61,7 @@ def create_test_input_path() -> InputPath:
     d = ip.add_dir("holidays")
     d.add_file("IMG001.jpg")
     d.add_file("IMG002.jpg")
-    
+
     d = ip.add_dir("random stuff")
     d.add_file("DSC0001.jpg")
     d.add_file("DSC0002.jpg")
@@ -72,12 +74,13 @@ def create_test_input_path() -> InputPath:
 
     return ip
 
+
 def mock_move(self, output_path):
     return output_path
 
+
 @patch.object(ImageSorter, "_ImageSorter__move")
 class TestImageSorterSort(unittest.TestCase):
-
     def test_preparation(self, mock_sorter_move: Mock):
         ip = create_test_input_path()
 
@@ -155,9 +158,9 @@ class TestImageSorterSort(unittest.TestCase):
         self.assertGreaterEqual(mock_sorter_move.call_count, 2)
         self.assertLess(mock_sorter_move.call_count, 4)
 
+
 @patch("exif_sort.sorter.ImageFile.move", mock_move)
 class TestImageSorterMove(unittest.TestCase):
-
     def setUp(self):
         locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
 
@@ -165,7 +168,10 @@ class TestImageSorterMove(unittest.TestCase):
         ip = create_test_input_path()
 
         def on_file_move(path, new_path, progress):
-            self.assertEqual(new_path, Path("/home/user/example_output_dir", "2022/December/08", path.name))
+            self.assertEqual(
+                new_path,
+                Path("/home/user/example_output_dir", "2022/December/08", path.name),
+            )
 
         with patch("exif_sort.sorter.ImageFile.get_date_time") as mock_get_date_time:
             mock_get_date_time.return_value = datetime(2022, 12, 8, 15, 17, 49)
@@ -183,10 +189,17 @@ class TestImageSorterMove(unittest.TestCase):
         ip = create_test_input_path()
 
         def on_file_move(path, new_path, progress):
-            self.assertEqual(new_path, Path("/home/user/example_output_dir", "2022/12", path.name))
+            self.assertEqual(
+                new_path, Path("/home/user/example_output_dir", "2022/12", path.name)
+            )
 
         def on_file_move_2(path, new_path, progress):
-            self.assertEqual(new_path, Path("/home/user/example_output_dir", "Year 2022/December/08", path.name))
+            self.assertEqual(
+                new_path,
+                Path(
+                    "/home/user/example_output_dir", "Year 2022/December/08", path.name
+                ),
+            )
 
         with patch("exif_sort.sorter.ImageFile.get_date_time") as mock_get_date_time:
             mock_get_date_time.return_value = datetime(2022, 12, 8, 15, 17, 49)
@@ -206,7 +219,14 @@ class TestImageSorterMove(unittest.TestCase):
         ip = create_test_input_path()
 
         def on_file_move(path, new_path, progress):
-            self.assertEqual(new_path, Path("/home/user/example_output_dir", "2022/December/08", "08 December.jpg"))
+            self.assertEqual(
+                new_path,
+                Path(
+                    "/home/user/example_output_dir",
+                    "2022/December/08",
+                    "08 December.jpg",
+                ),
+            )
 
         def on_file_move_2(path, new_path, progress):
             self.assertEqual(new_path, Path("/home/user/example_output_dir", path.name))
@@ -222,7 +242,7 @@ class TestImageSorterMove(unittest.TestCase):
             sorter.sort()
 
             mock_get_date_time.return_value = None
-            
+
             sorter.sort_unknown = True
             sorter.on_move = on_file_move_2
             sorter.sort()
@@ -235,7 +255,7 @@ class TestImageSorterMove(unittest.TestCase):
                 datetime(2022, 12, 8, 15, 17, 49),
                 None,
                 None,
-                datetime(2022, 12, 9, 16, 6, 23)
+                datetime(2022, 12, 9, 16, 6, 23),
             ]
 
             sorter = ImageSorter(ip)
@@ -273,7 +293,9 @@ class TestImageSorterMove(unittest.TestCase):
         self.assertEqual(sorter.on_error.call_count, 1)
 
     def test_move_error(self):
-        exif_sort.sorter.ImageFile.move = Mock(side_effect=ImageMoveError("error_image.jpg", OSError))
+        exif_sort.sorter.ImageFile.move = Mock(
+            side_effect=ImageMoveError("error_image.jpg", OSError)
+        )
 
         ip = create_test_input_path()
 
@@ -289,9 +311,9 @@ class TestImageSorterMove(unittest.TestCase):
 
             self.assertEqual(sorter.on_error.call_count, 4)
 
+
 @patch("exif_sort.sorter.ImageFile.get_date_time")
 class TestImageSorterProgress(unittest.TestCase):
-
     def setUp(self):
         self.__ip = create_test_input_path()
         self.__progress_list = []
@@ -317,7 +339,23 @@ class TestImageSorterProgress(unittest.TestCase):
         sorter.recursive = True
         sorter.sort()
 
-        self.assertEqual(self.__progress_list, [1/12, 1/6, 0.25, 1/3, 5/12, 0.5, 7/12, 2/3, 0.75, 5/6, 11/12, 1])
+        self.assertEqual(
+            self.__progress_list,
+            [
+                1 / 12,
+                1 / 6,
+                0.25,
+                1 / 3,
+                5 / 12,
+                0.5,
+                7 / 12,
+                2 / 3,
+                0.75,
+                5 / 6,
+                11 / 12,
+                1,
+            ],
+        )
 
     @patch("exif_sort.sorter.ImageFile.move", lambda self, path: path)
     def test_move_and_skip(self, mock_get_date_time: Mock):
@@ -325,7 +363,7 @@ class TestImageSorterProgress(unittest.TestCase):
             datetime(2022, 12, 8, 15, 17, 49),
             None,
             None,
-            datetime(2022, 12, 9, 16, 6, 23)
+            datetime(2022, 12, 9, 16, 6, 23),
         ]
 
         sorter = ImageSorter(self.__ip)
@@ -373,6 +411,7 @@ class TestImageSorterProgress(unittest.TestCase):
         sorter.sort()
 
         self.assertEqual(self.__progress_list, [0.25, 0.5, 1])
+
 
 if __name__ == "__main__":
     unittest.main()

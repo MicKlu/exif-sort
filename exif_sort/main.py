@@ -3,7 +3,6 @@ import locale
 import math
 from pathlib import Path
 import sys
-from threading import Thread
 
 from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QLineEdit
@@ -11,7 +10,9 @@ from exif_sort.ui.main_window import Ui_MainWindow
 
 from exif_sort.sorter import ImageSorter, ImageMoveError
 
+
 class MainWindow(QMainWindow, Ui_MainWindow):
+    """Application's main window."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -20,20 +21,30 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.__sort_thread = None
         self.__log_status("Ready")
 
-    def setupUi(self, MainWindow):
+    def setupUi(self, MainWindow):  # pylint: disable=redefined-outer-name
         super().setupUi(MainWindow)
 
         # Hide unusable widgets on init
         self.cancelButton.setVisible(False)
 
         # Open FileDialogs and update path fields
-        self.inputDirectoryBrowseButton.clicked.connect(self.__on_input_directory_button_click)
-        self.outputDirectoryBrowseButton.clicked.connect(self.__on_output_directory_button_click)
+        self.inputDirectoryBrowseButton.clicked.connect(
+            self.__on_input_directory_button_click
+        )
+        self.outputDirectoryBrowseButton.clicked.connect(
+            self.__on_output_directory_button_click
+        )
 
         # Update output preview on each path's part change
-        self.outputDirectoryPathEdit.textChanged.connect(self.__on_output_directory_path_change)
-        self.outputFormatComboBox.currentTextChanged.connect(self.__on_output_format_change)
-        self.renameFormatComboBox.currentTextChanged.connect(self.__on_rename_format_change)
+        self.outputDirectoryPathEdit.textChanged.connect(
+            self.__on_output_directory_path_change
+        )
+        self.outputFormatComboBox.currentTextChanged.connect(
+            self.__on_output_format_change
+        )
+        self.renameFormatComboBox.currentTextChanged.connect(
+            self.__on_rename_format_change
+        )
         self.renameCheckBox.clicked.connect(self.__on_rename_click)
 
         # Start/cancel sorting
@@ -58,11 +69,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.recursiveCheckBox,
             self.skipUnknownCheckBox,
             self.outputFormatComboBox,
-            self.renameCheckBox
+            self.renameCheckBox,
         ]
 
-        for w in widgets:
-            w.setDisabled(lock)
+        for widget in widgets:
+            widget.setDisabled(lock)
 
         if lock:
             self.renameFormatComboBox.setDisabled(True)
@@ -90,19 +101,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         path_edit.setText(path)
 
-    def __on_output_directory_path_change(self, text: str):
+    def __on_output_directory_path_change(self, _text: str):
         """Called when output path has been changed."""
         self.__update_output_preview()
 
-    def __on_output_format_change(self, text: str):
+    def __on_output_format_change(self, _text: str):
         """Called when output format has been changed."""
         self.__update_output_preview()
 
-    def __on_rename_format_change(self, text: str):
+    def __on_rename_format_change(self, _text: str):
         """Called when rename format has been changed."""
         self.__update_output_preview()
 
-    def __on_rename_click(self, checked: bool):
+    def __on_rename_click(self, _checked: bool):
         """Called when renaming files has been toggled."""
         self.__update_output_preview()
 
@@ -202,12 +213,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def __on_sort_move(self, old_path: str, new_path: str, progress: float):
         """Called when file has been moved."""
-        self.__log_status(f"Moved \"{old_path}\" to \"{new_path}\"")
+        self.__log_status(f'Moved "{old_path}" to "{new_path}"')
         self.__update_progress_bar(progress)
 
     def __on_sort_skip(self, path: str, progress: float):
         """Called when file has been skipped."""
-        self.__log_status(f"Skipped \"{path}\"")
+        self.__log_status(f'Skipped "{path}"')
         self.__update_progress_bar(progress)
 
     def __on_sort_error(self, exception: Exception, progress: float):
@@ -234,9 +245,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.cancelButton.setDisabled(True)
         self.__sort_thread.stop()
 
-    def __quit(self): # pragma: no cover
+    def __quit(self):  # pragma: no cover
         """Closes window and exits application."""
         self.close()
+
 
 class SorterThread(QThread):
     """Separate thread for sorting task."""
@@ -253,19 +265,22 @@ class SorterThread(QThread):
         self.stopped = False
 
         # Map sorter's callbacks to Qt signals
-        self.__sorter.on_move = lambda p1, p2, pr: self.on_move.emit(p1, p2, pr)
-        self.__sorter.on_error = lambda e, pr: self.on_error.emit(e, pr)
-        self.__sorter.on_skip = lambda p, pr: self.on_skip.emit(p, pr)
-        self.__sorter.on_finish = lambda: self.on_finish.emit()
+        self.__sorter.on_move = self.on_move.emit
+        self.__sorter.on_error = self.on_error.emit
+        self.__sorter.on_skip = self.on_skip.emit
+        self.__sorter.on_finish = self.on_finish.emit
 
     def run(self):
+        """Runs sorter task."""
         self.__sorter.sort()
 
     def stop(self):
+        """Requests cancellation of sorter task."""
         self.stopped = True
         self.__sorter.cancel()
 
-def main(): # pragma: no cover
+
+def main():  # pragma: no cover
     locale.setlocale(locale.LC_ALL, "")
 
     app = QApplication(sys.argv)
