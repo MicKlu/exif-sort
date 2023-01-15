@@ -17,10 +17,10 @@ main_module = importlib.import_module(".main", "exif_sort")
 
 app = QApplication(sys.argv)
 
+
 @patch.object(main_module, "SorterThread", Mock())
 @patch.object(main_module, "ImageSorter")
 class ImageSorterInitCase(unittest.TestCase):
-
     def setUp(self):
         self.window = MainWindow()
         self.window.inputDirectoryPathEdit.setText("/home/user/images")
@@ -46,7 +46,7 @@ class ImageSorterInitCase(unittest.TestCase):
         mock_sorter_instance = Mock()
         mock_sorter_instance.output_dir = Mock()
         mock_sorter.return_value = mock_sorter_instance
-        
+
         self.window.outputDirectoryPathEdit.setText("")
         self.click_sort()
 
@@ -81,10 +81,13 @@ class ImageSorterInitCase(unittest.TestCase):
         mock_sorter_instance.group_format = Mock()
         mock_sorter.return_value = mock_sorter_instance
 
-        for i in range(self.window.outputFormatComboBox.count()):        
+        for i in range(self.window.outputFormatComboBox.count()):
             self.window.outputFormatComboBox.setCurrentIndex(i)
             self.click_sort()
-            self.assertEqual(mock_sorter_instance.group_format, self.window.outputFormatComboBox.currentText())
+            self.assertEqual(
+                mock_sorter_instance.group_format,
+                self.window.outputFormatComboBox.currentText(),
+            )
 
         self.window.outputFormatComboBox.setCurrentText("  %d/%m.%Y at %H_%M ")
         self.click_sort()
@@ -117,19 +120,22 @@ class ImageSorterInitCase(unittest.TestCase):
 
         self.window.renameCheckBox.setChecked(True)
 
-        for i in range(self.window.renameFormatComboBox.count()):        
+        for i in range(self.window.renameFormatComboBox.count()):
             self.window.renameFormatComboBox.setCurrentIndex(i)
             self.click_sort()
-            self.assertEqual(mock_sorter_instance.rename_format, self.window.renameFormatComboBox.currentText())
+            self.assertEqual(
+                mock_sorter_instance.rename_format,
+                self.window.renameFormatComboBox.currentText(),
+            )
 
         self.window.renameFormatComboBox.setCurrentText("  %d/%m.%Y at %H_%M ")
         self.click_sort()
         self.assertEqual(mock_sorter_instance.rename_format, "%d/%m.%Y at %H_%M")
 
+
 @patch.object(main_module.SorterThread, "start", Mock())
 @patch.object(main_module, "ImageSorter")
 class UISorterInteractionCase(unittest.TestCase):
-
     def setUp(self):
         self.window = MainWindow()
         self.window.inputDirectoryPathEdit.setText("/home/user/images")
@@ -169,7 +175,7 @@ class UISorterInteractionCase(unittest.TestCase):
             self.window.recursiveCheckBox,
             self.window.skipUnknownCheckBox,
             self.window.outputFormatComboBox,
-            self.window.renameCheckBox
+            self.window.renameCheckBox,
         ]
 
         # Rename not checked case
@@ -242,9 +248,11 @@ class UISorterInteractionCase(unittest.TestCase):
 
         self.assertEqual(self.window.statusProgress.value(), 100)
 
-@patch.object(main_module.SorterThread, "start", lambda self: self._SorterThread__sorter.sort())
-class ImageSorterStatusCase(unittest.TestCase):
 
+@patch.object(
+    main_module.SorterThread, "start", lambda self: self._SorterThread__sorter.sort()
+)
+class ImageSorterStatusCase(unittest.TestCase):
     def setUp(self):
         self.window = MainWindow()
         self.window.inputDirectoryPathEdit.setText("/home/user/images")
@@ -262,7 +270,9 @@ class ImageSorterStatusCase(unittest.TestCase):
 
         self.click_sort()
 
-        mock_sorter_instance.on_move(Path("/home/user/images/image1.png"), Path.home() / Path("image1.png"), 1)
+        mock_sorter_instance.on_move(
+            Path("/home/user/images/image1.png"), Path.home() / Path("image1.png"), 1
+        )
 
         items_count = self.window.statusList.count()
         msg = self.window.statusList.item(items_count - 1).text()
@@ -285,7 +295,11 @@ class ImageSorterStatusCase(unittest.TestCase):
 
     def test_on_error(self):
         with patch.object(Path, "iterdir") as mock_iterdir:
-            mock_iterdir.side_effect = [PermissionError, FileNotFoundError, OSError]
+            mock_iterdir.side_effect = [
+                PermissionError,
+                FileNotFoundError,
+                OSError,
+            ]
             expected_msg = ["Permission denied", "not found", "Error"]
 
             for em in expected_msg:
@@ -300,11 +314,17 @@ class ImageSorterStatusCase(unittest.TestCase):
             mock_iterdir.return_value = [Path("/home/user/images/image1.png")]
             with patch.object(Path, "is_dir") as mock_is_dir:
                 mock_is_dir.return_value = False
-                with patch.object(main_module.ImageSorter, "_ImageSorter__move") as mock___move:
+                with patch.object(
+                    main_module.ImageSorter, "_ImageSorter__move"
+                ) as mock___move:
                     mock___move.side_effect = [
-                        ImageMoveError("/home/user/images/image1.png", PermissionError()),
-                        ImageMoveError("/home/user/images/image1.png", FileNotFoundError()),
-                        ImageMoveError("/home/user/images/image1.png", OSError())
+                        ImageMoveError(
+                            "/home/user/images/image1.png", PermissionError()
+                        ),
+                        ImageMoveError(
+                            "/home/user/images/image1.png", FileNotFoundError()
+                        ),
+                        ImageMoveError("/home/user/images/image1.png", OSError()),
                     ]
 
                     expected_msg = ["Permission denied", "not found", "Error"]
@@ -318,13 +338,35 @@ class ImageSorterStatusCase(unittest.TestCase):
                         self.assertRegex(msg, em)
 
     @patch.object(main_module, "ImageSorter")
+    def test_on_error_no_events(self, mock_sorter: Union["ImageSorter", Mock]):
+        mock_sorter_instance = Mock()
+        mock_sorter.return_value = mock_sorter_instance
+
+        self.click_sort()
+
+        mock_sorter_instance.on_error(
+            RuntimeError(
+                "empty-queue",
+                "No event received in last 60 seconds.",
+            ),
+            0.66,
+        )
+
+        items_count = self.window.statusList.count()
+        msg = self.window.statusList.item(items_count - 1).text()
+
+        self.assertRegex(msg, "Nothing")
+
+    @patch.object(main_module, "ImageSorter")
     def test_on_finish(self, mock_sorter: Union["ImageSorter", Mock]):
         mock_sorter_instance = Mock()
         mock_sorter.return_value = mock_sorter_instance
 
         self.click_sort()
 
-        mock_sorter_instance.on_move(Path("/home/user/images/image1.png"), Path.home() / Path("image1.png"), 1)
+        mock_sorter_instance.on_move(
+            Path("/home/user/images/image1.png"), Path.home() / Path("image1.png"), 1
+        )
         mock_sorter_instance.on_finish()
 
         items_count = self.window.statusList.count()
@@ -333,7 +375,9 @@ class ImageSorterStatusCase(unittest.TestCase):
         self.assertRegex(msg, "Ready")
 
         self.click_sort()
-        mock_sorter_instance.on_move(Path("/home/user/images/image1.png"), Path.home() / Path("image1.png"), 1)
+        mock_sorter_instance.on_move(
+            Path("/home/user/images/image1.png"), Path.home() / Path("image1.png"), 1
+        )
         self.click_cancel()
         mock_sorter_instance.on_finish()
 
@@ -342,9 +386,9 @@ class ImageSorterStatusCase(unittest.TestCase):
 
         self.assertRegex(msg, "cancel")
 
+
 @patch.object(QFileDialog, "getExistingDirectory")
 class BrowseCase(unittest.TestCase):
-
     def setUp(self):
         self.window = MainWindow()
         self.window.inputDirectoryPathEdit.setText("/home/user/images")
@@ -357,14 +401,18 @@ class BrowseCase(unittest.TestCase):
 
         self.assertEqual(input_widget.text(), "/home/user/images")
 
-        QTest.mouseClick(self.window.inputDirectoryBrowseButton, Qt.MouseButton.LeftButton)
+        QTest.mouseClick(
+            self.window.inputDirectoryBrowseButton, Qt.MouseButton.LeftButton
+        )
 
         self.assertEqual(input_widget.text(), "/home/user/images")
 
-        QTest.mouseClick(self.window.inputDirectoryBrowseButton, Qt.MouseButton.LeftButton)
+        QTest.mouseClick(
+            self.window.inputDirectoryBrowseButton, Qt.MouseButton.LeftButton
+        )
 
         self.assertEqual(input_widget.text(), "/home/user/pictures/")
-    
+
     def test_browse_output(self, mock_getExistingDirectory: Mock):
         mock_getExistingDirectory.side_effect = ["", "/home/user/pictures/"]
 
@@ -372,10 +420,14 @@ class BrowseCase(unittest.TestCase):
 
         self.assertEqual(output_widget.text(), "/home/user/images")
 
-        QTest.mouseClick(self.window.outputDirectoryBrowseButton, Qt.MouseButton.LeftButton)
+        QTest.mouseClick(
+            self.window.outputDirectoryBrowseButton, Qt.MouseButton.LeftButton
+        )
 
         self.assertEqual(output_widget.text(), "/home/user/images")
 
-        QTest.mouseClick(self.window.outputDirectoryBrowseButton, Qt.MouseButton.LeftButton)
+        QTest.mouseClick(
+            self.window.outputDirectoryBrowseButton, Qt.MouseButton.LeftButton
+        )
 
         self.assertEqual(output_widget.text(), "/home/user/pictures/")

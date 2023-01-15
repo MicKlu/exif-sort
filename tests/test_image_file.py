@@ -13,16 +13,13 @@ class ImageFileGetDateCase(unittest.TestCase):
     def create_image(self, exif_date="") -> Mock:
         mock_image = Mock()
 
-        mock_exif = Mock()
-        mock_exif.get.return_value = exif_date
-
-        mock_image.getexif.return_value = mock_exif
+        mock_image.getexif.return_value.get.return_value = exif_date
 
         return mock_image
 
     @patch.object(Image, "open")
     def test_file_has_exif(self, mock_open: Mock):
-        mock_open.return_value = self.create_image(
+        mock_open.return_value.__enter__.return_value = self.create_image(
             datetime.now().strftime("%Y:%m:%d %H:%M:%S")
         )
 
@@ -33,7 +30,7 @@ class ImageFileGetDateCase(unittest.TestCase):
 
     @patch.object(Image, "open")
     def test_file_has_not_exif(self, mock_open: Mock):
-        mock_open.return_value = self.create_image()
+        mock_open.return_value.__enter__.return_value = self.create_image()
 
         img = ImageFile("mock_file.bmp")
         date_time = img.get_date_time()

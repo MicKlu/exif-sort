@@ -1,18 +1,21 @@
-from concurrent.futures import ThreadPoolExecutor
+"""Image sorting implementation."""
+
+import shutil
+from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
-import shutil
+from queue import Empty, Queue
 from threading import Thread
-from queue import Queue
-from typing import Callable, Optional, Any
+from typing import Any, Callable, Optional, Sequence
 
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 
 
 class ImageOpenError(Exception):
     """Raised if image couldn't be opened."""
 
     def __init__(self, path: Path):
+        """Create new open exception with given path to file."""
         super().__init__(f"Couldn't open image ({path})")
 
 
@@ -20,6 +23,7 @@ class ImageMoveError(Exception):
     """Raised if image couldn't be moved."""
 
     def __init__(self, path: Path, reason: Exception):
+        """Create new move exception with given path to file and the reason."""
         super().__init__(f"Couldn't move image ({path})")
 
         self.path = path
@@ -30,17 +34,17 @@ class ImageFile:
     """Class for operating on image file."""
 
     def __init__(self, path: Path):
+        """Create new read-only image file object."""
         self.__path = path
         self.__exif = None
 
     def get_date_time(self) -> Optional[datetime]:
-        """Extracts date of image from EXIF."""
+        """Extract date of image from EXIF."""
         try:
-            img = Image.open(self.__path)
-            self.__exif = img.getexif()
-            img.close()
-        except:
-            raise ImageOpenError(self.__path)
+            with Image.open(self.__path) as img:
+                self.__exif = img.getexif()
+        except (OSError, UnidentifiedImageError) as e:
+            raise ImageOpenError(self.__path) from e
 
         if self.__exif:
             date_time_str: str = self.__exif.get(306)  # 306 - DateTime
@@ -51,7 +55,7 @@ class ImageFile:
         return datetime.strptime(date_time_str, "%Y:%m:%d %H:%M:%S")
 
     def move(self, output_path: Path) -> Path:
-        """Moves file to new location."""
+        """Move file to new location."""
         new_path = output_path
 
         i = 1
@@ -65,7 +69,7 @@ class ImageFile:
             output_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(self.__path, new_path)
         except OSError as e:
-            raise ImageMoveError(self.__path, e)
+            raise ImageMoveError(self.__path, e) from e
 
         return new_path
 
@@ -90,11 +94,12 @@ class ImageSorter:
     __cancelled: bool = False
 
     def __init__(self, input_dir: Path):
+        """Create new sorter."""
         self.input_dir = input_dir
         self.output_dir = input_dir.joinpath("sort_output")
 
     def sort(self):
-        """Starts sorting task."""
+        """Start sorting task."""
         self.__output_queue = Queue()
         self.__dirs = []
 
@@ -110,8 +115,15 @@ class ImageSorter:
                 future = executor.submit(self.__sorting_task, dir["dir"])
                 futures.append(future)
 
-            while True:
-                event = self.__output_queue.get()
+            self.__run_event_loop(futures)
+
+        if getattr(self, "on_finish", False):
+            self.on_finish()
+
+    def __run_event_loop(self, futures: Sequence[Future]):
+        while True:
+            try:
+                event = self.__output_queue.get(timeout=60)
 
                 if event[0] == "move" and getattr(self, "on_move", False):
                     self.on_move(*event[1:])
@@ -119,22 +131,25 @@ class ImageSorter:
                     self.on_error(*event[1:])
                 elif event[0] == "skip" and getattr(self, "on_skip", False):
                     self.on_skip(*event[1:])
+            except Empty:
+                if getattr(self, "on_error", False):
+                    self.on_error(
+                        RuntimeError(
+                            "empty-queue",
+                            "No event received in last 60 seconds.",
+                        ),
+                        self.__get_progress(),
+                    )
 
-                if (
-                    False not in [f.done() for f in futures]
-                    and self.__output_queue.empty()
-                ):
-                    break
-
-        if getattr(self, "on_finish", False):
-            self.on_finish()
+            if False not in [f.done() for f in futures] and self.__output_queue.empty():
+                break
 
     def cancel(self) -> None:
-        """Requests cancellation of sorting task."""
+        """Request cancellation of sorting task."""
         self.__cancelled = True
 
     def __prepare(self, dir: Path) -> None:
-        """Prepares list of directories to sort and counts files."""
+        """Prepare list of directories to sort and counts files."""
         try:
             files = 0
             for file in dir.iterdir():
@@ -153,7 +168,7 @@ class ImageSorter:
             self.__trigger_event(("error", e))
 
     def __sorting_task(self, dir: Path):
-        """Starts sorting loop."""
+        """Start sorting loop."""
         try:
             for file in dir.iterdir():
                 if self.__cancelled:
@@ -166,7 +181,7 @@ class ImageSorter:
                     self.__move(file)
                 except ImageMoveError as e:
                     self.__trigger_event(("error", e), dir)
-        except Exception as e:
+        except OSError as e:
             dir_data = self.__get_dir_data(dir)
             dir_data["progress"] = dir_data["files"]
             self.__trigger_event(("error", e))
@@ -174,12 +189,12 @@ class ImageSorter:
         self.__trigger_event(("finish",))
 
     def __move(self, path: Path):
-        """Determines new image path and moves the file."""
+        """Determine new image path and moves the file."""
         img = ImageFile(path)
 
         try:
             date_time = img.get_date_time()
-        except:
+        except ImageOpenError:
             date_time = None
 
         filename = path.name
@@ -214,14 +229,14 @@ class ImageSorter:
         self.__output_queue.put((*event_data, self.__get_progress()))
 
     def __get_dir_data(self, dir: Path) -> dict:
-        """Returns sorter data about specified directory."""
+        """Return sorter data about specified directory."""
         dirset = {dir["dir"]: dir for dir in self.__dirs}
         if dir in dirset:
             return dirset[dir]
         return {}
 
     def __get_progress(self) -> float:
-        """Returns total progress on sorting as number in range of [0;1]."""
+        """Return total progress on sorting as number in range of [0;1]."""
         files, progress = 0, 0
         for dir in self.__dirs:
             files += dir["files"]

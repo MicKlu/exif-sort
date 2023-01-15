@@ -1,12 +1,11 @@
 from datetime import datetime
 import locale
 from pathlib import Path
+from queue import Queue, Empty
 import time
 from threading import Thread
 import unittest
-from unittest.mock import Mock, patch, create_autospec
-
-import PIL
+from unittest.mock import Mock, patch, DEFAULT
 
 import exif_sort
 from exif_sort.sorter import ImageSorter, ImageMoveError
@@ -251,12 +250,13 @@ class TestImageSorterMove(unittest.TestCase):
         ip = create_test_input_path()
 
         with patch("exif_sort.sorter.ImageFile.get_date_time") as mock_get_date_time:
-            mock_get_date_time.side_effect = [
+            dates = [
                 datetime(2022, 12, 8, 15, 17, 49),
                 None,
                 None,
                 datetime(2022, 12, 9, 16, 6, 23),
             ]
+            mock_get_date_time.side_effect = dates
 
             sorter = ImageSorter(ip)
             sorter.output_dir = Path("/home/user/example_output_dir")
@@ -269,6 +269,8 @@ class TestImageSorterMove(unittest.TestCase):
 
             self.assertEqual(sorter.on_move.call_count, 2)
             self.assertEqual(sorter.on_skip.call_count, 2)
+
+            mock_get_date_time.side_effect = dates
 
             sorter.sort_unknown = True
             sorter.on_move = Mock()
@@ -404,13 +406,43 @@ class TestImageSorterProgress(unittest.TestCase):
         mock_move.side_effect = [
             lambda self, path: path,
             lambda self, path: path,
-            RuntimeError,
+            OSError,
             lambda self, path: path,
         ]
 
         sorter.sort()
 
         self.assertEqual(self.__progress_list, [0.25, 0.5, 1])
+
+
+@patch.object(ImageSorter, "_ImageSorter__sorting_task", side_effect=RuntimeError)
+class TestSorterEventLoop(unittest.TestCase):
+    """
+    Test if sorter will finish even without finish event.
+
+    Patched __sorting_task method will always raise RuntimeError
+    which is not caught ending task without triggering events.
+    After 60 seconds event loop should raise an Empty exception
+    and call on_error callback. Because there are no more events
+    and all tasks have already finished sorter should call on_finish
+    callback and stop execution.
+    """
+
+    def setUp(self):
+        self.__ip = create_test_input_path()
+
+    def test_event_loop_stuck(self, mock_sorting_task: Mock):
+        sorter = ImageSorter(self.__ip)
+
+        sorter.on_error = Mock()
+        sorter.on_finish = Mock()
+
+        sorter.sort()
+
+        sorter.on_error.assert_called_once()
+        self.assertEquals(sorter.on_error.call_args[0][0].args[0], "empty-queue")
+        self.assertEquals(sorter.on_error.call_args[0][1], 0)
+        sorter.on_finish.assert_called_once()
 
 
 if __name__ == "__main__":
