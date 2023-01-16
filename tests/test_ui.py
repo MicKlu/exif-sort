@@ -244,7 +244,7 @@ class UISorterInteractionCase(unittest.TestCase):
 
         self.assertEqual(self.window.statusProgress.value(), 50)
 
-        mock_sorter_instance.on_error(RuntimeError(), 1.0)
+        mock_sorter_instance.on_error(RuntimeError(""), 1.0)
 
         self.assertEqual(self.window.statusProgress.value(), 100)
 

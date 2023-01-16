@@ -1,6 +1,8 @@
 """Image sorting implementation."""
 
 import shutil
+import sys
+import traceback
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
@@ -8,6 +10,7 @@ from queue import Empty, Queue
 from threading import Thread
 from typing import Any, Callable, Optional, Sequence
 
+from dateutil.parser import isoparse
 from PIL import Image, UnidentifiedImageError
 
 
@@ -46,13 +49,23 @@ class ImageFile:
         except (OSError, UnidentifiedImageError) as e:
             raise ImageOpenError(self.__path) from e
 
-        if self.__exif:
-            date_time_str: str = self.__exif.get(306)  # 306 - DateTime
+        if not self.__exif:
+            return None
+
+        date_time_str: str = self.__exif.get(306)  # 306 - DateTime
 
         if date_time_str is None or len(date_time_str) == 0:
             return None
 
-        return datetime.strptime(date_time_str, "%Y:%m:%d %H:%M:%S")
+        try:
+            return datetime.strptime(date_time_str, "%Y:%m:%d %H:%M:%S")
+        except ValueError:
+            pass  # try isoparse
+
+        try:
+            return isoparse(date_time_str)
+        except ValueError:
+            return None
 
     def move(self, output_path: Path) -> Path:
         """Move file to new location."""
@@ -183,8 +196,12 @@ class ImageSorter:
                     self.__trigger_event(("error", e), dir)
         except OSError as e:
             dir_data = self.__get_dir_data(dir)
-            dir_data["progress"] = dir_data["files"]
+            if dir_data:
+                dir_data["progress"] = dir_data["files"]
             self.__trigger_event(("error", e))
+        except Exception:  # pragma: no cover
+            traceback.print_exc(file=sys.stderr)
+            raise
 
         self.__trigger_event(("finish",))
 
@@ -225,15 +242,17 @@ class ImageSorter:
         If input_dir is provided, progress on that directory is increased.
         """
         if input_dir:
-            self.__get_dir_data(input_dir)["progress"] += 1
+            dir_data = self.__get_dir_data(input_dir)
+            if dir_data:
+                dir_data["progress"] += 1
         self.__output_queue.put((*event_data, self.__get_progress()))
 
-    def __get_dir_data(self, dir: Path) -> dict:
+    def __get_dir_data(self, dir: Path) -> Optional[dict]:
         """Return sorter data about specified directory."""
         dirset = {dir["dir"]: dir for dir in self.__dirs}
         if dir in dirset:
             return dirset[dir]
-        return {}
+        return None
 
     def __get_progress(self) -> float:
         """Return total progress on sorting as number in range of [0;1]."""

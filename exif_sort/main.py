@@ -31,6 +31,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Hide unusable widgets on init
         self.cancelButton.setVisible(False)
 
+        # Update output preview
+        self.__update_output_preview()
+
         # Open FileDialogs and update path fields
         self.inputDirectoryBrowseButton.clicked.connect(
             self.__on_input_directory_button_click

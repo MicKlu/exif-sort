@@ -103,19 +103,19 @@ class TestImageSorterSort(unittest.TestCase):
 
         self.assertEqual(len(sorter._ImageSorter__dirs), 4)
 
-        dirs = [str(d["dir"]) for d in sorter._ImageSorter__dirs]
+        dirs = [d["dir"] for d in sorter._ImageSorter__dirs]
 
-        self.assertTrue("/home/user/example_input_dir" in dirs)
-        self.assertTrue("/home/user/example_input_dir/holidays" in dirs)
-        self.assertTrue("/home/user/example_input_dir/random stuff" in dirs)
-        self.assertTrue("/home/user/example_input_dir/random stuff/nsfw" in dirs)
+        self.assertTrue(Path("/home/user/example_input_dir") in dirs)
+        self.assertTrue(Path("/home/user/example_input_dir/holidays") in dirs)
+        self.assertTrue(Path("/home/user/example_input_dir/random stuff") in dirs)
+        self.assertTrue(Path("/home/user/example_input_dir/random stuff/nsfw") in dirs)
 
-        files = {str(d["dir"]): d["files"] for d in sorter._ImageSorter__dirs}
+        files = {d["dir"]: d["files"] for d in sorter._ImageSorter__dirs}
 
-        self.assertEqual(files["/home/user/example_input_dir"], 4)
-        self.assertEqual(files["/home/user/example_input_dir/holidays"], 2)
-        self.assertEqual(files["/home/user/example_input_dir/random stuff"], 3)
-        self.assertEqual(files["/home/user/example_input_dir/random stuff/nsfw"], 3)
+        self.assertEqual(files[Path("/home/user/example_input_dir")], 4)
+        self.assertEqual(files[Path("/home/user/example_input_dir/holidays")], 2)
+        self.assertEqual(files[Path("/home/user/example_input_dir/random stuff")], 3)
+        self.assertEqual(files[Path("/home/user/example_input_dir/random stuff/nsfw")], 3)
 
     def test_simple_sort(self, mock_sorter_move: Mock):
         ip = create_test_input_path()
@@ -440,8 +440,8 @@ class TestSorterEventLoop(unittest.TestCase):
         sorter.sort()
 
         sorter.on_error.assert_called_once()
-        self.assertEquals(sorter.on_error.call_args[0][0].args[0], "empty-queue")
-        self.assertEquals(sorter.on_error.call_args[0][1], 0)
+        self.assertEqual(sorter.on_error.call_args[0][0].args[0], "empty-queue")
+        self.assertEqual(sorter.on_error.call_args[0][1], 0)
         sorter.on_finish.assert_called_once()
 
 

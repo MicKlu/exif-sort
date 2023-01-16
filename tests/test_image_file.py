@@ -29,10 +29,34 @@ class ImageFileGetDateCase(unittest.TestCase):
         self.assertEqual(date_time, datetime.now().replace(microsecond=0))
 
     @patch.object(Image, "open")
+    def test_file_has_exif_iso(self, mock_open: Mock):
+        mock_open.return_value.__enter__.side_effect = [
+            self.create_image(datetime.now().strftime("%Y-%m-%dT%H:%M:%S-19:00")),
+            self.create_image(datetime.now().strftime("%Y-%m-%dT%H:%M:%S+02:00")),
+        ]
+
+        img = ImageFile("mock_file.jpg")
+        date_time = img.get_date_time()
+        self.assertEqual(
+            date_time.replace(tzinfo=None), datetime.now().replace(microsecond=0)
+        )
+
+        date_time = img.get_date_time()
+        self.assertEqual(
+            date_time.replace(tzinfo=None), datetime.now().replace(microsecond=0)
+        )
+
+    @patch.object(Image, "open")
     def test_file_has_not_exif(self, mock_open: Mock):
-        mock_open.return_value.__enter__.return_value = self.create_image()
+        mock_open.return_value.__enter__.side_effect = [
+            self.create_image(),
+            self.create_image(None),
+        ]
 
         img = ImageFile("mock_file.bmp")
+        date_time = img.get_date_time()
+        self.assertIsNone(date_time)
+
         date_time = img.get_date_time()
         self.assertIsNone(date_time)
 
