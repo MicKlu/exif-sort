@@ -6,11 +6,12 @@ import sys
 from threading import Thread
 from typing import Union
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QApplication, QFileDialog
 
-from exif_sort.main import MainWindow, ImageSorter, SorterThread
+import exif_sort
+from exif_sort.main import MainWindow, ImageSorter, SorterThread, AboutDialog
 from exif_sort.sorter import ImageSorter, ImageMoveError
 
 main_module = importlib.import_module(".main", "exif_sort")
@@ -431,3 +432,20 @@ class BrowseCase(unittest.TestCase):
         )
 
         self.assertEqual(output_widget.text(), "/home/user/pictures/")
+
+
+class AboutDialogCase(unittest.TestCase):
+    def setUp(self):
+        self.window = MainWindow()
+
+    def test_version(self):
+        def then():
+            self.assertIsNotNone(self.window.about_dialog)
+            self.about_dialog = self.window.about_dialog
+            self.assertEqual(
+                self.about_dialog.versionLabel.text(), exif_sort.__version__
+            )
+            QTest.mouseClick(self.about_dialog.closeButton, Qt.MouseButton.LeftButton)
+
+        QTimer.singleShot(0, then)
+        self.window.actionAbout.trigger()

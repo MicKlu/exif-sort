@@ -5,16 +5,24 @@ import math
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 from PyQt5.QtCore import QThread, pyqtSignal
-from PyQt5.QtWidgets import QApplication, QFileDialog, QLineEdit, QMainWindow
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog, QLineEdit, QMainWindow
 
+from exif_sort import __version__
 from exif_sort.sorter import ImageMoveError, ImageSorter
+from exif_sort.ui.about import Ui_AboutDialog
 from exif_sort.ui.main_window import Ui_MainWindow
+
+RESOURCES_PATH = Path("exif_sort/res")
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     """Application's main window."""
+
+    about_dialog: Optional["AboutDialog"] = None
 
     def __init__(self, parent=None):
         """Create new main window."""
@@ -27,6 +35,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def setupUi(self, MainWindow):  # pylint: disable=redefined-outer-name
         """Set up UI widgets and connect signals and slots."""
         super().setupUi(MainWindow)
+
+        # Set icon
+        self.setWindowIcon(QIcon(str(RESOURCES_PATH / "icon.png")))
 
         # Hide unusable widgets on init
         self.cancelButton.setVisible(False)
@@ -60,6 +71,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Quit application
         self.actionQuit.triggered.connect(self.__quit)
+
+        # Open About window
+        self.actionAbout.triggered.connect(self.__about)
 
     def __log_status(self, msg: str):
         """Display message in status listbox."""
@@ -262,6 +276,30 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def __quit(self):  # pragma: no cover
         """Close window and exit application."""
         self.close()
+
+    def __about(self):
+        """Open About dialog."""
+        self.about_dialog = AboutDialog(self)
+        self.about_dialog.exec()
+
+
+class AboutDialog(QDialog, Ui_AboutDialog):
+    """About dialog displaying basic application data."""
+
+    def __init__(self, parent=None):
+        """Create new About dialog."""
+        super().__init__(parent)
+        self.setupUi(self)
+
+    def setupUi(self, AboutDialog):  # pylint: disable=redefined-outer-name
+        """Set up UI widgets."""
+        super().setupUi(AboutDialog)
+
+        # Set icon
+        self.setWindowIcon(QIcon(str(RESOURCES_PATH / "icon.png")))
+
+        # Set version
+        self.versionLabel.setText(__version__)
 
 
 class SorterThread(QThread):
