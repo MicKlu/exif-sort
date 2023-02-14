@@ -1,6 +1,6 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
-"""An entry point for EXIF Image Sorter"""
+"""An entry point for EXIF Image Sorter."""
 
 import sys
 
