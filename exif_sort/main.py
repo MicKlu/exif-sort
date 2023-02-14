@@ -4,11 +4,12 @@ import locale
 import math
 import sys
 from datetime import datetime
+from importlib import resources
 from pathlib import Path
 from typing import Optional
 
 from PyQt5.QtCore import QThread, pyqtSignal
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog, QLineEdit, QMainWindow
 
 from exif_sort import __version__
@@ -16,7 +17,7 @@ from exif_sort.sorter import ImageMoveError, ImageSorter
 from exif_sort.ui.about import Ui_AboutDialog
 from exif_sort.ui.main_window import Ui_MainWindow
 
-RESOURCES_PATH = Path("exif_sort/res")
+RESOURCES_PATH = resources.files("exif_sort.res")
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -35,9 +36,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def setupUi(self, MainWindow):  # pylint: disable=redefined-outer-name
         """Set up UI widgets and connect signals and slots."""
         super().setupUi(MainWindow)
-
-        # Set icon
-        self.setWindowIcon(QIcon(str(RESOURCES_PATH / "icon.png")))
 
         # Hide unusable widgets on init
         self.cancelButton.setVisible(False)
@@ -295,8 +293,8 @@ class AboutDialog(QDialog, Ui_AboutDialog):
         """Set up UI widgets."""
         super().setupUi(AboutDialog)
 
-        # Set icon
-        self.setWindowIcon(QIcon(str(RESOURCES_PATH / "icon.png")))
+        with resources.as_file(RESOURCES_PATH.joinpath("icon.png")) as icon:
+            self.logoLabel.setPixmap(QPixmap(str(icon)))
 
         # Set version
         self.versionLabel.setText(__version__)
@@ -338,6 +336,11 @@ def main():  # pragma: no cover
     locale.setlocale(locale.LC_ALL, "")
 
     app = QApplication(sys.argv)
+
+    # Set icon
+    with resources.as_file(RESOURCES_PATH.joinpath("icon.ico")) as icon:
+        app.setWindowIcon(QIcon(str(icon)))
+
     window = MainWindow()
     window.show()
 
